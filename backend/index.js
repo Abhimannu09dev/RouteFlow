@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 const {
   createUser,
   loginUser,
@@ -13,6 +14,12 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
 app.use(express.json());
+app.use(
+  cors({
+    origin: ["http://localhost:3000", "http://localhost:3001"],
+    credentials: true,
+  }),
+);
 
 app.get("/", (req, res) => {
   res.send("Hello World from Node.js!");
