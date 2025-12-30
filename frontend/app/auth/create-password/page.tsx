@@ -1,8 +1,8 @@
-import CheckMail from "@/component/auth/CheckEmail";
+import CreatePassword from "@/component/auth/CreatePassword";
 import React from "react";
 
 const UpdatePassword = () => {
-  return <CheckMail />;
+  return <CreatePassword />;
 };
 
 export default UpdatePassword;

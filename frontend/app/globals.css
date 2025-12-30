@@ -2,6 +2,7 @@
 
 @theme inline {
   --color-primary: #00b7b5;
+  --color-primary-dark: #009a99;
 }
 
 @utility no-scrollbar {
