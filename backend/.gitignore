@@ -5,18 +5,18 @@ yarn.lock
 
 # Environment
 .env
-.env.local
 .env.*.local
 
-# Build outputs
-.next/
-out/
-build/
-dist/
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Auto-generated
-next-env.d.ts
-*.tsbuildinfo
+# Runtime
+dist/
+build/
 
 # IDE
 .vscode/

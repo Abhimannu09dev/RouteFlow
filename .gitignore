@@ -10,13 +10,8 @@ yarn.lock
 
 # Build outputs
 .next/
-out/
-build/
 dist/
-
-# Auto-generated
-next-env.d.ts
-*.tsbuildinfo
+build/
 
 # IDE
 .vscode/
@@ -25,3 +20,6 @@ next-env.d.ts
 *.swo
 *~
 .DS_Store
+
+# OS
+Thumbs.db
