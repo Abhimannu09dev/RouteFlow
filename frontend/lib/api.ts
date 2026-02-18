@@ -50,4 +50,16 @@ export const authAPI = {
     if (!response.ok) throw new Error(data.error || "Login failed");
     return data;
   },
+
+  forgotPassword: async (email: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await response.json();
+    if (!response.ok)
+      throw new Error(data.error || "Forgot password request failed");
+    return data;
+  },
 };
