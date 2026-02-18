@@ -13,6 +13,8 @@ const userSchema = new Schema({
   isVerified: { type: Boolean, default: false },
   otpHash: { type: String },
   otpExpires: { type: Date },
+  resetTokenHash: { type: String },
+  resetTokenExpires: { type: Date },
 });
 
 const User = mongoose.model("User", userSchema);
