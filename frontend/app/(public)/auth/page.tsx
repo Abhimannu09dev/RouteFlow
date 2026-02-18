@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import AuthForm from "@/component/auth/AuthPage";
+import AuthForm from "@/components/auth/AuthPage";
 
 const Auth = async ({ searchParams }: { searchParams: { action: string } }) => {
   const { action } = await searchParams;

@@ -1,7 +1,8 @@
+import ResetPassword from "@/components/auth/ForgotPassword";
 import React from "react";
-import VerifyAuth from "@/component/auth/VerifyOTP";
+
 const ForgotPassword = () => {
-  return <VerifyAuth />;
+  return <ResetPassword />;
 };
 
 export default ForgotPassword;

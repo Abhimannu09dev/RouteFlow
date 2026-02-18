@@ -152,7 +152,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
         localStorage.setItem("user", JSON.stringify(response.user));
 
         toast.success("Login successful!");
-        router.push("/dashboard");
+        router.push(`/${response.user.role}/dashboard`);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");
