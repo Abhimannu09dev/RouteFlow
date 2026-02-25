@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Drawer } from "antd";
 import Link from "next/link";
 import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
-import { GraduationCap, LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, Truck } from "lucide-react";
 
 const MobileSidebar = ({ pathname }: { pathname: string }) => {
   const [open, setOpen] = useState(false);
@@ -28,7 +28,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
 
         {/* Logo Section */}
         <div className="flex items-center gap-2">
-          <GraduationCap className="p-1.5 rounded-md bg-green-600 text-white w-8 h-8" />
+          <Truck className="p-1.5 rounded-md bg-primary/10 text-primary w-8 h-8" />
           <p className=" text-lg font-medium text-gray-900">RouteFlow</p>
         </div>
       </div>

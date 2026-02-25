@@ -11,6 +11,14 @@ const {
   resetPassword,
 } = require("./controller/userController");
 
+const {
+  createOrder,
+  getAvailableOrders,
+  updateOrderStatus,
+  getOrderDetails,
+} = require("./controller/orderController");
+const { auth, rolecheck } = require("./middleware/auth");
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
@@ -29,7 +37,7 @@ app.use(
 );
 
 app.get("/", (req, res) => {
-  res.send("Hello World from Node.js!");
+  res.send("RouteFlow API is running");
 });
 
 app.post("/auth/register", createUser);
@@ -38,6 +46,15 @@ app.post("/auth/verify-otp", verifyOtp);
 app.post("/auth/resend-otp", resendOtp);
 app.post("/auth/forgot-password", forgotPassword);
 app.post("/auth/reset-password", resetPassword);
+app.post("/create/order", auth, createOrder);
+app.get("/orders", auth, getAvailableOrders);
+app.put(
+  "/orders/:orderId/status",
+  auth,
+  rolecheck(["logistic"]),
+  updateOrderStatus,
+);
+app.get("/orders/:orderId", auth, getOrderDetails);
 
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");

@@ -13,37 +13,37 @@ export const primarySidebarItems = [
     id: "dashboard",
     label: "Dashboard",
     icon: HouseIcon,
-    href: "/manufacturer/dashboard",
+    href: "/logistics/dashboard",
   },
   {
     id: "chats",
     label: "Chats",
     icon: MessageCircleMore,
-    href: "/manufacturer/chats",
+    href: "/logistics/chats",
   },
   {
     id: "orders-placement",
     label: "Orders Placement",
     icon: CalendarArrowUp,
-    href: "/manufacturer/orders-placement",
+    href: "/logistics/orders-placement",
   },
   {
     id: "history",
     label: "History",
     icon: FileClock,
-    href: "/manufacturer/history",
+    href: "/logistics/history",
   },
   {
     id: "payments",
     label: "Payments",
     icon: BadgeDollarSign,
-    href: "/manufacturer/payments",
+    href: "/logistics/payments",
   },
   {
     id: "settings",
     label: "Settings",
     icon: Settings,
-    href: "/manufacturer/settings",
+    href: "/logistics/settings",
   },
 ];
 
@@ -52,6 +52,6 @@ export const secondarySidebarItems = [
     id: "help-support",
     label: "Help & Support",
     icon: HeartHandshake,
-    href: "/manufacturer/support",
+    href: "/logistics/support",
   },
 ];

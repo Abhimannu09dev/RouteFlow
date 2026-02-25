@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const userSchema = new Schema({
-  name: { type: String, required: true },
+  companyName: { type: String, required: true },
   role: {
     type: String,
     enum: ["logistic", "manufacturer"],

@@ -15,11 +15,11 @@ function hashOtp(otp) {
 // Function to create user
 async function createUser(req, res, next) {
   try {
-    const { name, email, password, role } = req.body;
+    const { companyName, email, password, role } = req.body;
 
     // validation of data through backend
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Name is required" });
+    if (!companyName || !companyName.trim()) {
+      return res.status(400).json({ error: "Company name is required" });
     }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: "Email is required" });
@@ -63,7 +63,7 @@ async function createUser(req, res, next) {
     const otp = generateOtp();
 
     const user = new User({
-      name,
+      companyName,
       email,
       role,
       password: hashedPassword,
@@ -126,12 +126,12 @@ async function loginUser(req, res, next) {
 
     const userDetails = {
       _id: user._id,
-      name: user.name,
+      companyName: user.companyName,
       email: user.email,
       role: user.role,
     };
 
-    const payload = { userID: user._id, role: user.role };
+    const payload = { id: user._id, role: user.role };
     console.log("payload:", payload);
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -268,7 +268,7 @@ async function forgotPassword(req, res) {
           <p style="margin: 5px 0 0 0; font-size: 14px;">Password Reset Request</p>
         </div>
         <div style="padding: 30px; background-color: #f9f9f9;">
-          <p style="color: #333; font-size: 16px;">Hello ${user.name},</p>
+          <p style="color: #333; font-size: 16px;">Hello ${user.companyName},</p>
           <p style="color: #666; font-size: 14px; line-height: 1.6;">
             We received a request to reset your password. Click the button below to create a new password.
           </p>
@@ -391,7 +391,7 @@ async function accountVerificationStatus(req, res) {
 
     // Build update object (only update provided fields)
     const updatableFields = [
-      "name",
+      "companyName",
       "contactNumber",
       "panNo",
       "companyLocation",
