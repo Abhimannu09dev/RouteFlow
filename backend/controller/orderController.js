@@ -149,23 +149,41 @@ async function acceptOrder(req, res) {
   }
 }
 
-// Function to view all the accepted orders for a logistic company
+// Function to view all the accepted orders for a logistic company and listed by the manufacturer
 async function getMyOrders(req, res) {
-  try {
-    const orders = await Order.find({ logistic: req.user.id }).populate(
-      "manufacturer",
-      "companyName email",
-    );
+  const role = req.user.role;
 
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No assigned orders found" });
+  if (role === "logistic") {
+    try {
+      const orders = await Order.find({ logistic: req.user.id }).populate(
+        "manufacturer",
+        "companyName email",
+      );
+
+      if (orders.length === 0) {
+        return res.status(404).json({ message: "No assigned orders found" });
+      }
+
+      return res.status(200).json(orders);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: "Server error", error: error.message });
     }
-
-    return res.status(200).json(orders);
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Server error", error: error.message });
+  } else if (role === "manufacturer") {
+    try {
+      const orders = await Order.find({ manufacturer: req.user.id }).populate(
+        "logistic",
+        "companyName email",
+      );
+      return res.status(200).json(orders);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: "Server error", error: error.message });
+    }
+  } else {
+    return res.status(403).json({ message: "Access denied" });
   }
 }
 
