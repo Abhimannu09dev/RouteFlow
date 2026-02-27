@@ -27,7 +27,7 @@ async function createOrder(req, res) {
       routeTo: order.routeTo,
       additionalInfo: order.additionalInfo,
     });
-    
+
     await order.save();
     res.status(201).json(order);
   } catch (error) {
@@ -46,16 +46,38 @@ async function createOrder(req, res) {
 // Get all orders for a user
 async function getAvailableOrders(req, res) {
   try {
-    const orders = await Order.find({ logistic: null }).populate(
-      "manufacturer",
-      "companyName email",
-    );
+    const role = req.user.role;
 
-    if (orders.length === 0) {
-      return res.status(404).json({ message: "No available orders found" });
+    if (role === "manufacturer") {
+      try {
+        const orders = await Order.find({ manufacturer: req.user.id }).populate(
+          "manufacturer",
+          "companyName email",
+        );
+        if (orders.length === 0) {
+          return res.status(404).json({ message: "No orders found" });
+        }
+        return res.status(200).json(orders);
+      } catch (error) {
+        return res
+          .status(500)
+          .json({ message: "Server error", error: error.message });
+      }
+    } else if (role === "logistic") {
+      // Logistic companies can only see orders that are not yet accepted
+      const orders = await Order.find({ logistic: null }).populate(
+        "manufacturer",
+        "companyName email",
+      );
+
+      if (orders.length === 0) {
+        return res.status(404).json({ message: "No available orders found" });
+      }
+
+      return res.status(200).json(orders);
+    } else {
+      return res.status(403).json({ message: "Access denied" });
     }
-
-    return res.status(200).json(orders);
   } catch (error) {
     return res
       .status(500)
@@ -87,8 +109,8 @@ async function getOrderDetails(req, res) {
   try {
     const { orderId } = req.params;
     const order = await Order.findOne({ orderId })
-      .populate("manufacturer", "name email")
-      .populate("logistic", "name email");
+      .populate("manufacturer", "companyName email")
+      .populate("logistic", "companyName email");
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
