@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const orderSchema = new Schema({
   orderId: { type: String, required: true, unique: true },
   manufacturer: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  logistic: { type: Schema.Types.ObjectId, ref: "User", default: null },
+  logistics: { type: Schema.Types.ObjectId, ref: "User", default: null },
   productDetails: { type: String, required: true },
   quantity: { type: Number, required: true },
   status: {

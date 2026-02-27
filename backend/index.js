@@ -53,11 +53,11 @@ app.get("/orders", auth, getAvailableOrders);
 app.put(
   "/orders/:orderId/status",
   auth,
-  rolecheck(["logistic"]),
+  rolecheck(["logistics"]),
   updateOrderStatus,
 );
 app.get("/orders/:orderId", auth, getOrderDetails);
-app.put("/orders/:orderId/accept", auth, rolecheck(["logistic"]), acceptOrder);
+app.put("/orders/:orderId/accept", auth, rolecheck(["logistics"]), acceptOrder);
 app.get("/my-orders", auth, getMyOrders);
 
 if (!MONGO_URI) {

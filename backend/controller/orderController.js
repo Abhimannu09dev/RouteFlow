@@ -63,9 +63,9 @@ async function getAvailableOrders(req, res) {
           .status(500)
           .json({ message: "Server error", error: error.message });
       }
-    } else if (role === "logistic") {
+    } else if (role === "logistics") {
       // Logistic companies can only see orders that are not yet accepted
-      const orders = await Order.find({ logistic: null }).populate(
+      const orders = await Order.find({ logistics: null }).populate(
         "manufacturer",
         "companyName email",
       );
@@ -92,7 +92,7 @@ async function updateOrderStatus(req, res) {
     const userId = req.user.id;
     const { status } = req.body;
     const order = await Order.findOneAndUpdate(
-      { orderId, logistic: userId },
+      { orderId, logistics: userId },
       { status, updatedAt: Date.now() },
       { new: true },
     );
@@ -111,7 +111,7 @@ async function getOrderDetails(req, res) {
     const { orderId } = req.params;
     const order = await Order.findOne({ orderId })
       .populate("manufacturer", "companyName email")
-      .populate("logistic", "companyName email");
+      .populate("logistics", "companyName email");
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
@@ -121,19 +121,19 @@ async function getOrderDetails(req, res) {
   }
 }
 
-// Function to accept an order by a logistic company
+// Function to accept an order by a logistics company
 async function acceptOrder(req, res) {
   try {
     const { orderId } = req.params;
-    const logisticId = req.user.id;
+    const logisticsId = req.user.id;
 
     const updated = await Order.findOneAndUpdate(
-      { orderId: orderId, logistic: null }, // only if still open
-      { logistic: logisticId, status: "accepted", updatedAt: Date.now() },
+      { orderId: orderId, logistics: null }, // only if still open
+      { logistics: logisticsId, status: "accepted", updatedAt: Date.now() },
       { new: true },
     )
       .populate("manufacturer", "companyName email")
-      .populate("logistic", "companyName email");
+      .populate("logistics", "companyName email");
 
     if (!updated) {
       return res
@@ -149,13 +149,13 @@ async function acceptOrder(req, res) {
   }
 }
 
-// Function to view all the accepted orders for a logistic company and listed by the manufacturer
+// Function to view all the accepted orders for a logistics company and listed by the manufacturer
 async function getMyOrders(req, res) {
   const role = req.user.role;
 
-  if (role === "logistic") {
+  if (role === "logistics") {
     try {
-      const orders = await Order.find({ logistic: req.user.id }).populate(
+      const orders = await Order.find({ logistics: req.user.id }).populate(
         "manufacturer",
         "companyName email",
       );
@@ -173,7 +173,7 @@ async function getMyOrders(req, res) {
   } else if (role === "manufacturer") {
     try {
       const orders = await Order.find({ manufacturer: req.user.id }).populate(
-        "logistic",
+        "logistics",
         "companyName email",
       );
       return res.status(200).json(orders);
