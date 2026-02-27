@@ -1,11 +1,11 @@
 "use client";
 
-import Navbar from "@/components/manufaturer/common/Navbar";
-import DesktopSidebar from "@/components/manufaturer/common/DesktopSidebar";
-import MobileSidebar from "@/components/manufaturer/common/MobileSidebar";
+import Navbar from "@/components/logistics/common/Navbar";
+import DesktopSidebar from "@/components/logistics/common/DesktopSidebar";
+import MobileSidebar from "@/components/logistics/common/MobileSidebar";
 import { usePathname } from "next/navigation";
 
-export default function ManufacturerLayout({
+export default function LogisticsLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

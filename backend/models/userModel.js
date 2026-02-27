@@ -5,8 +5,8 @@ const userSchema = new Schema({
   companyName: { type: String, required: true },
   role: {
     type: String,
-    enum: ["logistic", "manufacturer"],
-    default: "logistic",
+    enum: ["logistics", "manufacturer"],
+    default: "logistics",
   },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, minlength: 6 },
