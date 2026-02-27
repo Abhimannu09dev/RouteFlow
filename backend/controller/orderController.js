@@ -9,7 +9,7 @@ async function createOrder(req, res) {
       req.body;
 
     const order = new Order({
-      orderId: "ORD-" + crypto.randomBytes(4).toString("hex").toUpperCase(),
+      orderId: "ORD-" + crypto.randomBytes(9).toString("hex").toUpperCase(),
       manufacturer: req.user.id,
       productDetails,
       quantity,
@@ -85,13 +85,14 @@ async function getAvailableOrders(req, res) {
   }
 }
 
-// Update order status
+// Update order status - it can be used by logistic companies to update the status of the order (e.g., in transit, delivered)
 async function updateOrderStatus(req, res) {
   try {
     const { orderId } = req.params;
+    const userId = req.user.id;
     const { status } = req.body;
     const order = await Order.findOneAndUpdate(
-      { orderId },
+      { orderId, logistic: userId },
       { status, updatedAt: Date.now() },
       { new: true },
     );
@@ -127,8 +128,8 @@ async function acceptOrder(req, res) {
     const logisticId = req.user.id;
 
     const updated = await Order.findOneAndUpdate(
-      { _id: orderId, logistic: null }, // only if still open
-      { logistic: logisticId, status: "in transit", updatedAt: Date.now() },
+      { orderId: orderId, logistic: null }, // only if still open
+      { logistic: logisticId, status: "accepted", updatedAt: Date.now() },
       { new: true },
     )
       .populate("manufacturer", "companyName email")

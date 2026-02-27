@@ -9,7 +9,7 @@ const orderSchema = new Schema({
   quantity: { type: Number, required: true },
   status: {
     type: String,
-    enum: ["pending", "in transit", "delivered", "cancelled"],
+    enum: ["pending", "accepted", "in transit", "delivered", "cancelled"],
     default: "pending",
   },
   routeForm: { type: String },

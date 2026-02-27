@@ -16,6 +16,8 @@ const {
   getAvailableOrders,
   updateOrderStatus,
   getOrderDetails,
+  acceptOrder,
+  getMyOrders,
 } = require("./controller/orderController");
 const { auth, rolecheck } = require("./middleware/auth");
 
@@ -55,6 +57,8 @@ app.put(
   updateOrderStatus,
 );
 app.get("/orders/:orderId", auth, getOrderDetails);
+app.put("/orders/:orderId/accept", auth, rolecheck(["logistic"]), acceptOrder);
+app.get("/my-orders", auth, getMyOrders);
 
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");
