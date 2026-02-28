@@ -15,11 +15,11 @@ function hashOtp(otp) {
 // Function to create user
 async function createUser(req, res, next) {
   try {
-    const { name, email, password, role } = req.body;
+    const { companyName, email, password, role } = req.body;
 
     // validation of data through backend
-    if (!name || !name.trim()) {
-      return res.status(400).json({ error: "Name is required" });
+    if (!companyName || !companyName.trim()) {
+      return res.status(400).json({ error: "Company name is required" });
     }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ error: "Email is required" });
@@ -34,7 +34,7 @@ async function createUser(req, res, next) {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      if (existingUser.isVerified) {
+      if (existingUser.isEmailVerified) {
         return res.status(409).json({ error: "User already exists" });
       }
 
@@ -63,7 +63,7 @@ async function createUser(req, res, next) {
     const otp = generateOtp();
 
     const user = new User({
-      name,
+      companyName,
       email,
       role,
       password: hashedPassword,
@@ -116,7 +116,7 @@ async function loginUser(req, res, next) {
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({ error: "Email not verified" });
+      return res.status(403).json({ error: "Account not verified" });
     }
     // Check if the password is valid or not
     const isValid = await bcrypt.compare(password, user.password);
@@ -126,12 +126,12 @@ async function loginUser(req, res, next) {
 
     const userDetails = {
       _id: user._id,
-      name: user.name,
+      companyName: user.companyName,
       email: user.email,
       role: user.role,
     };
 
-    const payload = { userID: user._id, role: user.role };
+    const payload = { id: user._id, role: user.role };
     console.log("payload:", payload);
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -200,7 +200,7 @@ async function resendOtp(req, res) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (user.isVerified) {
+    if (user.isEmailVerified) {
       return res.status(200).json({ message: "Email already verified" });
     }
 
@@ -268,7 +268,7 @@ async function forgotPassword(req, res) {
           <p style="margin: 5px 0 0 0; font-size: 14px;">Password Reset Request</p>
         </div>
         <div style="padding: 30px; background-color: #f9f9f9;">
-          <p style="color: #333; font-size: 16px;">Hello ${user.name},</p>
+          <p style="color: #333; font-size: 16px;">Hello ${user.companyName},</p>
           <p style="color: #666; font-size: 14px; line-height: 1.6;">
             We received a request to reset your password. Click the button below to create a new password.
           </p>
@@ -372,6 +372,64 @@ async function resetPassword(req, res) {
   }
 }
 
+async function accountVerificationStatus(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Check user exists first
+    const userExists = await User.findOne({ email, isAccountVerified: false });
+    if (!userExists) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (userExists.isAccountVerified) {
+      return res.status(200).json({ message: "Account already verified" });
+    }
+
+    // Build update object (only update provided fields)
+    const updatableFields = [
+      "companyName",
+      "contactNumber",
+      "panNo",
+      "companyLocation",
+      "companyDescription",
+      "companyLogo",
+      "companyDocument",
+      "companyWebsite",
+    ];
+
+    const updateData = {};
+    for (const key of updatableFields) {
+      if (req.body[key] !== undefined) {
+        updateData[key] = req.body[key];
+      }
+    }
+
+    // Update and return updated document if you need it
+    const updatedUser = await User.findOneAndUpdate(
+      { email },
+      { $set: updateData },
+      { new: true, runValidators: true },
+    );
+
+    return res.status(200).json({
+      message: "Account details sent for verification",
+      user: updatedUser, // optional: remove if you don't want to return user
+    });
+  } catch (error) {
+    console.error(
+      "Error updating account verification details:",
+      error.message,
+    );
+    return res
+      .status(500)
+      .json({ error: "Failed to update account verification details" });
+  }
+}
+
 module.exports = {
   createUser,
   loginUser,
@@ -379,4 +437,5 @@ module.exports = {
   resendOtp,
   forgotPassword,
   resetPassword,
+  accountVerificationStatus,
 };
