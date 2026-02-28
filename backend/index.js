@@ -1,7 +1,12 @@
 require("dotenv").config();
 const express = require("express");
+const WebSocket = require("ws");
+const http = require("http");
+const server = http.createServer();
+const wss = new WebSocket.Server({ server });
 const mongoose = require("mongoose");
 const cors = require("cors");
+
 const {
   createUser,
   loginUser,
@@ -59,6 +64,26 @@ app.put(
 app.get("/orders/:orderId", auth, getOrderDetails);
 app.put("/orders/:orderId/accept", auth, rolecheck(["logistics"]), acceptOrder);
 app.get("/my-orders", auth, getMyOrders);
+
+
+
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+
+
+// WebSocket server for real-time updates
+server.on("connection", (ws) => {
+  console.log("WebSocket client connected");
+  ws.on("message", (message) => {
+    console.log("Received message:", message);
+    ws.send(`Message sent: ${message}`);
+  });
+
+  ws.on("close", () => {
+    console.log("WebSocket client disconnected");
+  });
+});
 
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");
