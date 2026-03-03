@@ -6,14 +6,27 @@ const { notifyLogisticsNewOrder } = require("../websocket/orderEvents");
 // Create a new order
 async function createOrder(req, res) {
   try {
-    const { productDetails, quantity, routeForm, routeTo, additionalInfo } =
-      req.body;
+    const {
+      productDetails,
+      quantity,
+      weight,
+      vechileType,
+      invoiceNeeded,
+      vatBillNeeded,
+      routeForm,
+      routeTo,
+      additionalInfo,
+    } = req.body;
 
     const order = new Order({
       orderId: "ORD-" + crypto.randomBytes(9).toString("hex").toUpperCase(),
       manufacturer: req.user.id,
       productDetails,
       quantity,
+      weight,
+      vechileType,
+      invoiceNeeded,
+      vatBillNeeded,
       routeForm,
       routeTo,
       additionalInfo,
@@ -24,6 +37,10 @@ async function createOrder(req, res) {
       manufacturer: order.manufacturer,
       productDetails: order.productDetails,
       quantity: order.quantity,
+      weight: order.weight,
+      vechileType: order.vechileType,
+      invoiceNeeded: order.invoiceNeeded,
+      vatBillNeeded: order.vatBillNeeded,
       routeForm: order.routeForm,
       routeTo: order.routeTo,
       additionalInfo: order.additionalInfo,

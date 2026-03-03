@@ -7,6 +7,12 @@ const orderSchema = new Schema({
   logistics: { type: Schema.Types.ObjectId, ref: "User", default: null },
   productDetails: { type: String, required: true },
   quantity: { type: Number, required: true },
+  weight: { type: Number, required: true },
+  vechileType: { type: String, required: true },
+  invoiceNeeded: { type: Boolean, default: false, required: true },
+  vatBillNeeded: { type: Boolean, default: false, required: true },
+  invoiceDocuments: { type: String },
+  vatBillDocuments: { type: String },
   status: {
     type: String,
     enum: ["pending", "accepted", "in transit", "delivered", "cancelled"],
