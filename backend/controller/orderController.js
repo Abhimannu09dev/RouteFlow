@@ -1,6 +1,7 @@
 const User = require("../models/userModel");
 const Order = require("../models/orderModel");
 const crypto = require("crypto");
+const { notifyLogisticsNewOrder } = require("../websocket/orderEvents");
 
 // Create a new order
 async function createOrder(req, res) {
@@ -29,6 +30,7 @@ async function createOrder(req, res) {
     });
 
     await order.save();
+    notifyLogisticsNewOrder(order);
     res.status(201).json(order);
   } catch (error) {
     if (error.name === "ValidationError") {
