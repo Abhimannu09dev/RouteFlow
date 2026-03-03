@@ -14,7 +14,8 @@ const AuthForm = ({ action }: { action: string | null }) => {
 
   const actions = [
     {
-      label: "Welcome back",
+      title: "Welcome back!",
+      label: "Sign in",
       description: "Sign in to continue your journey",
       value: "sign-in",
       endpoint: "/auth/signin",
@@ -35,6 +36,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
       ],
     },
     {
+      title: "Create account",
       label: "Create account",
       description: "Let's get you started on your delivery journey 🚚",
       value: "sign-up",
@@ -42,10 +44,10 @@ const AuthForm = ({ action }: { action: string | null }) => {
       redirect: "/auth?action=sign-in",
       inputs: [
         {
-          label: "Full Name",
+          label: "Company Name",
           type: "text",
-          name: "name",
-          placeholder: "Enter your full name",
+          name: "companyName",
+          placeholder: "Enter your company name",
         },
         {
           label: "Email",
@@ -79,7 +81,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
   const [authType, setAuthType] = useState<string>(actions[0].value);
 
   const [formData, setFormData] = useState<{
-    name?: string;
+    companyName?: string;
     email: string;
     password: string;
     role?: string;
@@ -130,13 +132,14 @@ const AuthForm = ({ action }: { action: string | null }) => {
           return;
         }
 
-        if (!formData.name || !formData.name.trim()) {
-          toast.error("Name is required");
+        if (!formData.companyName || !formData.companyName.trim()) {
+          toast.error("Company name is required");
           return;
         }
+        console.log("User details:", formData);
 
         await authAPI.register(
-          formData.name,
+          formData.companyName,
           formData.email,
           formData.password,
           formData.role,
@@ -164,7 +167,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
   return (
     <div className="w-full flex flex-col items-center gap-1">
       <p className="text-lg font-medium">
-        {actions.find((a) => a.value === authType)?.label}
+        {actions.find((a) => a.value === authType)?.title}
       </p>
       <p className="text-blackish text-sm">
         {actions.find((a) => a.value === authType)?.description}
@@ -193,7 +196,6 @@ const AuthForm = ({ action }: { action: string | null }) => {
           ?.inputs.map((input, index) => (
             <div key={index} className="flex flex-col gap-0.5 w-full">
               <label className="text-grayish">{input.label}</label>
-
               {input.type === "select" ? (
                 <select
                   name={input.name}

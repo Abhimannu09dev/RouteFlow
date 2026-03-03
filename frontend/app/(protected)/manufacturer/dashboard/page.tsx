@@ -1,3 +1,5 @@
+// import Dashboard from "@/components/manufaturer/dashboard/Dashboard";
+
 export default function DashboardPage() {
   return (
     <div className="w-full h-full flex items-center justify-center">

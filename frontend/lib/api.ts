@@ -2,7 +2,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export const authAPI = {
   register: async (
-    name: string,
+    companyName: string,
     email: string,
     password: string,
     role: string,
@@ -10,7 +10,7 @@ export const authAPI = {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, password, role }),
+      body: JSON.stringify({ companyName, email, password, role }),
     });
     const data = await response.json();
     console.log("Register response:", data);

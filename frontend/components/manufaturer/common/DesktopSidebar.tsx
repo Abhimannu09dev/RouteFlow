@@ -6,11 +6,9 @@ import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
 
 export default function DesktopSidebar({ pathname }: { pathname: string }) {
   return (
-    // Changed to pure white bg, subtle slate border, and added a z-index/shadow for depth
     <nav className="hidden lg:flex w-full h-full overflow-y-auto bg-white py-6 px-4 flex-col border-r border-slate-200 z-10">
       {/* Logo Section */}
       <div className="flex items-center mb-8 gap-3 px-2">
-        {/* Softened the logo background using opacity instead of a solid color */}
         <div className="p-2 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
           <Truck className="w-6 h-6" />
         </div>
