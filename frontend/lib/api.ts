@@ -54,4 +54,41 @@ export const authAPI = {
     }),
 
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
+
+  me: () => apiFetch("/auth/me"),
+};
+
+export type CreateOrderPayload = {
+  productDetails: string;
+  quantity: number;
+  weight: number;
+  vehicleType: string;
+  invoiceNeeded: boolean;
+  vatBillNeeded: boolean;
+  routeFrom: string;
+  routeTo: string;
+  additionalInfo?: string;
+};
+
+export const orderAPI = {
+  createOrder: (payload: CreateOrderPayload) =>
+    apiFetch("/create/order", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  getOrders: () => apiFetch("/orders"),
+
+  getMyOrders: () => apiFetch("/my-orders"),
+
+  getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
+
+  acceptOrder: (orderId: string) =>
+    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
+
+  updateStatus: (orderId: string, status: string) =>
+    apiFetch(`/orders/${orderId}/status`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
 };
