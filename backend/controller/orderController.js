@@ -10,24 +10,30 @@ async function createOrder(req, res) {
       productDetails,
       quantity,
       weight,
-      vechileType,
+      vehicleType,
       invoiceNeeded,
       vatBillNeeded,
-      routeForm,
+      routeFrom,
       routeTo,
       additionalInfo,
     } = req.body;
 
+    if (req.user.role !== "manufacturer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only manufacturers can create orders",
+      });
+    }
     const order = new Order({
       orderId: "ORD-" + crypto.randomBytes(9).toString("hex").toUpperCase(),
       manufacturer: req.user.id,
       productDetails,
       quantity,
       weight,
-      vechileType,
+      vehicleType,
       invoiceNeeded,
       vatBillNeeded,
-      routeForm,
+      routeFrom,
       routeTo,
       additionalInfo,
     });
@@ -38,10 +44,10 @@ async function createOrder(req, res) {
       productDetails: order.productDetails,
       quantity: order.quantity,
       weight: order.weight,
-      vechileType: order.vechileType,
+      vehicleType: order.vehicleType,
       invoiceNeeded: order.invoiceNeeded,
       vatBillNeeded: order.vatBillNeeded,
-      routeForm: order.routeForm,
+      routeFrom: order.routeFrom,
       routeTo: order.routeTo,
       additionalInfo: order.additionalInfo,
     });
@@ -51,14 +57,11 @@ async function createOrder(req, res) {
     res.status(201).json(order);
   } catch (error) {
     if (error.name === "ValidationError") {
-      return res.status(400).json({ message: error.message });
+      return res.status(400).json({ success: false, message: error.message });
     }
-
-    if (req.user.role !== "manufacturer") {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    res.status(500).json({ message: "Server error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 }
 
@@ -74,13 +77,17 @@ async function getAvailableOrders(req, res) {
           "companyName email",
         );
         if (orders.length === 0) {
-          return res.status(404).json({ message: "No orders found" });
+          return res
+            .status(404)
+            .json({ success: false, message: "No orders found" });
         }
-        return res.status(200).json(orders);
+        return res.status(200).json({ success: true, orders });
       } catch (error) {
-        return res
-          .status(500)
-          .json({ message: "Server error", error: error.message });
+        return res.status(500).json({
+          success: false,
+          message: "Server error",
+          error: error.message,
+        });
       }
     } else if (role === "logistics") {
       // Logistic companies can only see orders that are not yet accepted
@@ -90,17 +97,19 @@ async function getAvailableOrders(req, res) {
       );
 
       if (orders.length === 0) {
-        return res.status(404).json({ message: "No available orders found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "No available orders found" });
       }
 
-      return res.status(200).json(orders);
+      return res.status(200).json({ success: true, orders });
     } else {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ success: false, message: "Access denied" });
     }
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Server error", error: error.message });
+      .json({ success: false, message: "Server error", error: error.message });
   }
 }
 
@@ -116,11 +125,15 @@ async function updateOrderStatus(req, res) {
       { new: true },
     );
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
-    res.status(200).json(order);
+    res.status(200).json({ success: true, order });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 }
 
@@ -132,11 +145,15 @@ async function getOrderDetails(req, res) {
       .populate("manufacturer", "companyName email")
       .populate("logistics", "companyName email");
     if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Order not found" });
     }
-    res.status(200).json(order);
+    res.status(200).json({ success: true, order });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 }
 
@@ -157,14 +174,14 @@ async function acceptOrder(req, res) {
     if (!updated) {
       return res
         .status(409)
-        .json({ message: "Order already taken or not found" });
+        .json({ success: false, message: "Order already taken or not found" });
     }
 
-    return res.status(200).json(updated);
+    return res.status(200).json({ success: true, order: updated });
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Server error", error: error.message });
+      .json({ success: false, message: "Server error", error: error.message });
   }
 }
 
@@ -180,14 +197,18 @@ async function getMyOrders(req, res) {
       );
 
       if (orders.length === 0) {
-        return res.status(404).json({ message: "No assigned orders found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "No assigned orders found" });
       }
 
-      return res.status(200).json(orders);
+      return res.status(200).json({ success: true, orders });
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Server error", error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
     }
   } else if (role === "manufacturer") {
     try {
@@ -195,14 +216,16 @@ async function getMyOrders(req, res) {
         "logistics",
         "companyName email",
       );
-      return res.status(200).json(orders);
+      return res.status(200).json({ success: true, orders });
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Server error", error: error.message });
+      return res.status(500).json({
+        success: false,
+        message: "Server error",
+        error: error.message,
+      });
     }
   } else {
-    return res.status(403).json({ message: "Access denied" });
+    return res.status(403).json({ success: false, message: "Access denied" });
   }
 }
 
