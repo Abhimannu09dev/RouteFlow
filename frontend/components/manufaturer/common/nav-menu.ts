@@ -26,7 +26,7 @@ export const primarySidebarItems = [
     id: "order-placement",
     label: "Orders Placement",
     icon: CalendarArrowUp,
-    href: "/manufacturer/order-placement",
+    href: "/manufacturer/order-management",
   },
   {
     id: "history",
