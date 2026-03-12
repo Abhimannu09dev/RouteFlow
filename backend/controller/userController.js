@@ -34,7 +34,7 @@ async function createUser(req, res, next) {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      if (existingUser.isEmailVerified) {
+      if (existingUser.isVerified) {
         return res.status(409).json({ error: "User already exists" });
       }
 
@@ -140,14 +140,15 @@ async function loginUser(req, res, next) {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: false,
+      sameSite: "lax",
       maxAge: 60 * 60 * 1000,
     });
 
     res.status(200).json({
       success: true,
       message: "Login successful",
+      user: userDetails,
     });
   } catch (error) {
     console.error("Error logging in", error.message);
@@ -206,7 +207,7 @@ async function resendOtp(req, res) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    if (user.isEmailVerified) {
+    if (user.isVerified) {
       return res.status(200).json({ message: "Email already verified" });
     }
 
