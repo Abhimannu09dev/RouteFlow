@@ -4,6 +4,7 @@ const express = require("express");
 const http = require("http");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const { initWebSocket } = require("./websocket");
 const routes = require("./routes");
@@ -17,6 +18,7 @@ const MONGO_URI = process.env.MONGO_URI;
 
 // Middleware
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(
   cors({

@@ -138,10 +138,16 @@ async function loginUser(req, res, next) {
       expiresIn: "1h",
     });
 
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 60 * 60 * 1000,
+    });
+
     res.status(200).json({
-      message: "Login successfull",
-      token: token,
-      user: userDetails,
+      success: true,
+      message: "Login successful",
     });
   } catch (error) {
     console.error("Error logging in", error.message);
