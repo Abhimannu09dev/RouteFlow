@@ -1,11 +1,16 @@
-// const User = require("../models/userModel");
 const Order = require("../models/orderModel");
 const crypto = require("crypto");
 const { notifyLogisticsNewOrder } = require("../websocket/orderEvents");
 
-// Create a new order
 async function createOrder(req, res) {
   try {
+    if (req.user.role !== "manufacturer") {
+      return res.status(403).json({
+        success: false,
+        message: "Only manufacturers can create orders",
+      });
+    }
+
     const {
       productDetails,
       quantity,
@@ -18,12 +23,22 @@ async function createOrder(req, res) {
       additionalInfo,
     } = req.body;
 
-    if (req.user.role !== "manufacturer") {
-      return res.status(403).json({
+    // Basic field validation
+    if (
+      !productDetails ||
+      !quantity ||
+      !weight ||
+      !vehicleType ||
+      !routeFrom ||
+      !routeTo
+    ) {
+      return res.status(400).json({
         success: false,
-        message: "Only manufacturers can create orders",
+        message:
+          "productDetails, quantity, weight, vehicleType, routeFrom and routeTo are required",
       });
     }
+
     const order = new Order({
       orderId: "ORD-" + crypto.randomBytes(9).toString("hex").toUpperCase(),
       manufacturer: req.user.id,
@@ -31,209 +46,194 @@ async function createOrder(req, res) {
       quantity,
       weight,
       vehicleType,
-      invoiceNeeded,
-      vatBillNeeded,
+      invoiceNeeded: invoiceNeeded ?? false,
+      vatBillNeeded: vatBillNeeded ?? false,
       routeFrom,
       routeTo,
-      additionalInfo,
-    });
-
-    console.log("Creating order with data:", {
-      orderId: order.orderId,
-      manufacturer: order.manufacturer,
-      productDetails: order.productDetails,
-      quantity: order.quantity,
-      weight: order.weight,
-      vehicleType: order.vehicleType,
-      invoiceNeeded: order.invoiceNeeded,
-      vatBillNeeded: order.vatBillNeeded,
-      routeFrom: order.routeFrom,
-      routeTo: order.routeTo,
-      additionalInfo: order.additionalInfo,
+      additionalInfo: additionalInfo || "",
     });
 
     await order.save();
+
+    // Notify connected logistics companies via WebSocket
     notifyLogisticsNewOrder(order);
-    res.status(201).json(order);
+
+    return res.status(201).json({ success: true, order });
   } catch (error) {
     if (error.name === "ValidationError") {
       return res.status(400).json({ success: false, message: error.message });
     }
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 }
 
-// Get all orders for a user
 async function getAvailableOrders(req, res) {
   try {
     const role = req.user.role;
 
     if (role === "manufacturer") {
-      try {
-        const orders = await Order.find({ manufacturer: req.user.id }).populate(
-          "manufacturer",
-          "companyName email",
-        );
-        if (orders.length === 0) {
-          return res
-            .status(404)
-            .json({ success: false, message: "No orders found" });
-        }
-        return res.status(200).json({ success: true, orders });
-      } catch (error) {
-        return res.status(500).json({
-          success: false,
-          message: "Server error",
-          error: error.message,
-        });
-      }
-    } else if (role === "logistics") {
-      // Logistic companies can only see orders that are not yet accepted
-      const orders = await Order.find({ logistics: null }).populate(
-        "manufacturer",
-        "companyName email",
-      );
+      const orders = await Order.find({ manufacturer: req.user.id })
+        .populate("manufacturer", "companyName email")
+        .populate("logistics", "companyName email")
+        .sort({ createdAt: -1 }); // newest first
 
-      if (orders.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "No available orders found" });
-      }
+      // Always return 200 — empty array is a valid response
+      return res.status(200).json({ success: true, orders });
+    } else if (role === "logistics") {
+      const orders = await Order.find({ logistics: null })
+        .populate("manufacturer", "companyName email")
+        .sort({ createdAt: -1 });
+
+      // Always return 200 — empty array is a valid response
+      return res.status(200).json({ success: true, orders });
+    } else {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+}
+
+async function getMyOrders(req, res) {
+  try {
+    const role = req.user.role;
+
+    if (role === "logistics") {
+      const orders = await Order.find({ logistics: req.user.id })
+        .populate("manufacturer", "companyName email")
+        .sort({ updatedAt: -1 });
+
+      // Always return 200 — empty array is a valid response
+      return res.status(200).json({ success: true, orders });
+    } else if (role === "manufacturer") {
+      const orders = await Order.find({ manufacturer: req.user.id })
+        .populate("logistics", "companyName email")
+        .sort({ createdAt: -1 });
 
       return res.status(200).json({ success: true, orders });
     } else {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 }
 
-// Update order status - it can be used by logistic companies to update the status of the order (e.g., in transit, delivered)
-async function updateOrderStatus(req, res) {
-  try {
-    const { orderId } = req.params;
-    const userId = req.user.id;
-    const { status } = req.body;
-    const order = await Order.findOneAndUpdate(
-      { orderId, logistics: userId },
-      { status, updatedAt: Date.now() },
-      { new: true },
-    );
-    if (!order) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Order not found" });
-    }
-    res.status(200).json({ success: true, order });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
-  }
-}
-
-// Get order details
 async function getOrderDetails(req, res) {
   try {
     const { orderId } = req.params;
+
     const order = await Order.findOne({ orderId })
       .populate("manufacturer", "companyName email")
       .populate("logistics", "companyName email");
+
     if (!order) {
       return res
         .status(404)
         .json({ success: false, message: "Order not found" });
     }
-    res.status(200).json({ success: true, order });
+
+    return res.status(200).json({ success: true, order });
   } catch (error) {
-    res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 }
 
-// Function to accept an order by a logistics company
 async function acceptOrder(req, res) {
   try {
     const { orderId } = req.params;
     const logisticsId = req.user.id;
 
-    const updated = await Order.findOneAndUpdate(
-      { orderId: orderId, logistics: null }, // only if still open
-      { logistics: logisticsId, status: "accepted", updatedAt: Date.now() },
+    const order = await Order.findOneAndUpdate(
+      { orderId, logistics: null }, // only match if still open
+      {
+        logistics: logisticsId,
+        status: "accepted",
+        updatedAt: Date.now(),
+      },
       { new: true },
     )
       .populate("manufacturer", "companyName email")
       .populate("logistics", "companyName email");
 
-    if (!updated) {
-      return res
-        .status(409)
-        .json({ success: false, message: "Order already taken or not found" });
+    if (!order) {
+      return res.status(409).json({
+        success: false,
+        message: "Order already taken or not found",
+      });
     }
 
-    return res.status(200).json({ success: true, order: updated });
+    return res.status(200).json({ success: true, order });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 }
 
-// Function to view all the accepted orders for a logistics company and listed by the manufacturer
-async function getMyOrders(req, res) {
-  const role = req.user.role;
+async function updateOrderStatus(req, res) {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
 
-  if (role === "logistics") {
-    try {
-      const orders = await Order.find({ logistics: req.user.id }).populate(
-        "manufacturer",
-        "companyName email",
-      );
-
-      if (orders.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "No assigned orders found" });
-      }
-
-      return res.status(200).json({ success: true, orders });
-    } catch (error) {
-      return res.status(500).json({
+    const VALID_STATUSES = ["accepted", "in transit", "delivered", "cancelled"];
+    if (!status || !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
         success: false,
-        message: "Server error",
-        error: error.message,
+        message: `Status must be one of: ${VALID_STATUSES.join(", ")}`,
       });
     }
-  } else if (role === "manufacturer") {
-    try {
-      const orders = await Order.find({ manufacturer: req.user.id }).populate(
-        "logistics",
-        "companyName email",
-      );
-      return res.status(200).json({ success: true, orders });
-    } catch (error) {
-      return res.status(500).json({
+
+    const order = await Order.findOneAndUpdate(
+      { orderId, logistics: userId }, // ensures only assigned logistics can update
+      { status, updatedAt: Date.now() },
+      { new: true },
+    )
+      .populate("manufacturer", "companyName email")
+      .populate("logistics", "companyName email");
+
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        message: "Server error",
-        error: error.message,
+        message:
+          "Order not found or you are not the assigned logistics partner",
       });
     }
-  } else {
-    return res.status(403).json({ success: false, message: "Access denied" });
+
+    return res.status(200).json({ success: true, order });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 }
 
 module.exports = {
   createOrder,
   getAvailableOrders,
-  updateOrderStatus,
+  getMyOrders,
   getOrderDetails,
   acceptOrder,
-  getMyOrders,
+  updateOrderStatus,
 };
