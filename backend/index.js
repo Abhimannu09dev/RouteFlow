@@ -37,6 +37,10 @@ app.get("/", (req, res) => {
   res.send("RouteFlow API is running");
 });
 
+app.get("/auth/me", auth, (req, res) => {
+  res.status(200).json({ id: req.user.id, role: req.user.role });
+});
+
 app.use("/", routes);
 app.post("/auth/logout", (req, res) => {
   res.clearCookie("token", {
