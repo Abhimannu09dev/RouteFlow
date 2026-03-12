@@ -118,14 +118,27 @@ const AuthForm = ({ action }: { action: string | null }) => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (
+      !formData.email ||
+      !formData.password ||
+      (authType === "sign-up" && !formData.role)
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
 
-    try {
-      if (authType === "sign-up") {
-        if (!formData.role) {
-          toast.error("Please select a role");
-          return;
-        }
+    if (authType === "sign-up" && !formData.role) {
+      toast.error("Please select a role");
+      return;
+    }
+
+    if (
+      authType === "sign-up" &&
+      formData.password !== formData.confirmPassword
+    ) {
+      toast.error("Passwords do not match");
+      return;
+    }
 
         if (formData.password !== formData.confirmPassword) {
           toast.error("Passwords do not match");
