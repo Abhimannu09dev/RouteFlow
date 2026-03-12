@@ -5,6 +5,8 @@ const http = require("http");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const { auth } = require("./middleware/auth");
+const User = require("./models/userModel");
 
 const { initWebSocket } = require("./websocket");
 const routes = require("./routes");
@@ -17,8 +19,8 @@ const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
 // Middleware
-app.use(express.json());
 app.use(cookieParser());
+app.use(express.json());
 
 app.use(
   cors({
@@ -37,8 +39,18 @@ app.get("/", (req, res) => {
   res.send("RouteFlow API is running");
 });
 
-app.get("/auth/me", auth, (req, res) => {
-  res.status(200).json({ id: req.user.id, role: req.user.role });
+app.get("/auth/me", auth, async (req, res) => {
+  const user = await User.findById(req.user.id).select(
+    "companyName email role",
+  );
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  res.status(200).json({
+    id: user._id,
+    companyName: user.companyName,
+    email: user.email,
+    role: user.role,
+  });
 });
 
 app.use("/", routes);
@@ -46,7 +58,7 @@ app.post("/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
   });
   res.status(200).json({ message: "Logged out successfully" });
 });

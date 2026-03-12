@@ -4,10 +4,10 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HugeiconsIcon } from "@hugeicons/react";
-import { EyeFreeIcons, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { toast } from "react-toastify";
 import { authAPI } from "@/lib/api";
+import { HugeiconsIcon } from "@hugeicons/react";
+import { EyeFreeIcons, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 
 const AuthForm = ({ action }: { action: string | null }) => {
   const router = useRouter();
@@ -60,7 +60,10 @@ const AuthForm = ({ action }: { action: string | null }) => {
           type: "select",
           name: "role",
           placeholder: "Select your role",
-          options: ["logistic", "manufacturer"],
+          options: [
+            { label: "Logistics Company", value: "logistics" },
+            { label: "Manufacturer", value: "manufacturer" },
+          ],
         },
         {
           label: "Password",
@@ -102,6 +105,10 @@ const AuthForm = ({ action }: { action: string | null }) => {
     } else {
       router.push("/auth?action=sign-in");
     }
+    // Reset form state on every tab switch
+    setFormData({ email: "", password: "", role: "" });
+    setIsPasswordShown(false);
+    setIsConfirmPasswordShown(false);
   }, [action, router]);
 
   const [isPasswordShown, setIsPasswordShown] = useState<boolean>(false);
@@ -118,57 +125,46 @@ const AuthForm = ({ action }: { action: string | null }) => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (
-      !formData.email ||
-      !formData.password ||
-      (authType === "sign-up" && !formData.role)
-    ) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
+    setIsLoading(true);
 
-    if (authType === "sign-up" && !formData.role) {
-      toast.error("Please select a role");
-      return;
-    }
-
-    if (
-      authType === "sign-up" &&
-      formData.password !== formData.confirmPassword
-    ) {
-      toast.error("Passwords do not match");
-      return;
-    }
+    try {
+      if (authType === "sign-in") {
+        if (!formData.email || !formData.password) {
+          toast.error("Please fill in all required fields");
+          setIsLoading(false);
+          return;
+        }
+        const response = await authAPI.login(formData.email, formData.password);
+        toast.success("Login successful!");
+        router.push(`/${response.user.role}/dashboard`);
+      } else if (authType === "sign-up") {
+        if (
+          !formData.companyName?.trim() ||
+          !formData.email ||
+          !formData.password ||
+          !formData.role
+        ) {
+          toast.error("Please fill all the required fields");
+          setIsLoading(false);
+          return;
+        }
 
         if (formData.password !== formData.confirmPassword) {
           toast.error("Passwords do not match");
+          setIsLoading(false);
           return;
         }
-
-        if (!formData.companyName || !formData.companyName.trim()) {
-          toast.error("Company name is required");
-          return;
-        }
-        console.log("User details:", formData);
 
         await authAPI.register(
           formData.companyName,
           formData.email,
           formData.password,
-          formData.role,
+          formData.role!,
         );
 
         toast.success("Registration successful! Check your email for OTP.");
         sessionStorage.setItem("verifyEmail", formData.email);
         router.push("/auth/verify-otp");
-      } else if (authType === "sign-in") {
-        const response = await authAPI.login(formData.email, formData.password);
-
-        localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response.user));
-
-        toast.success("Login successful!");
-        router.push(`/${response.user.role}/dashboard`);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");
@@ -219,9 +215,9 @@ const AuthForm = ({ action }: { action: string | null }) => {
                   <option value="" disabled>
                     Select your role
                   </option>
-                  {input.options?.map((option: string) => (
-                    <option key={option} value={option}>
-                      {option}
+                  {input.options?.map((option: any) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -270,14 +266,16 @@ const AuthForm = ({ action }: { action: string | null }) => {
             </div>
           ))}
 
-        <div className="w-full flex justify-start">
-          <Link
-            href="/auth/forgot-password"
-            className="text-[#c6c6c6] hover:text-[#606060] transition text-sm"
-          >
-            Forgot password
-          </Link>
-        </div>
+        {authType === "sign-in" && (
+          <div className="w-full flex justify-start">
+            <Link
+              href="/auth/forgot-password"
+              className="text-[#c6c6c6] hover:text-[#606060] transition text-sm"
+            >
+              Forgot password
+            </Link>
+          </div>
+        )}
 
         <button
           type="submit"
