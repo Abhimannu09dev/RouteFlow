@@ -38,6 +38,14 @@ app.get("/", (req, res) => {
 });
 
 app.use("/", routes);
+app.post("/auth/logout", (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
+  res.status(200).json({ message: "Logged out successfully" });
+});
 
 // Database + Server Start
 
