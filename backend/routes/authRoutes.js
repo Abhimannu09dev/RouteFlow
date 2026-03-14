@@ -7,7 +7,7 @@ const {
   resendOtp,
   forgotPassword,
   resetPassword,
-} = require("../controller/userController");
+} = require("../controllers/userController");
 
 const router = express.Router();
 

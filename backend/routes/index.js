@@ -4,7 +4,7 @@ const authRoutes = require("./authRoutes");
 const orderRoutes = require("./orderRoutes");
 const profileRoutes = require("./profileRoutes");
 
-const auth = require("../middleware/authMiddleware");
+const { auth } = require("../middleware/auth");
 
 const router = express.Router();
 
