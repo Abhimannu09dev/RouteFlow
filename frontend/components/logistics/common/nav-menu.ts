@@ -6,6 +6,7 @@ import {
   BadgeDollarSign,
   Settings,
   MessageCircleMore,
+  User,
 } from "lucide-react";
 
 export const primarySidebarItems = [
@@ -38,6 +39,12 @@ export const primarySidebarItems = [
     label: "Payments",
     icon: BadgeDollarSign,
     href: "/logistics/payments",
+  },
+  {
+    id: "profile",
+    label: "Profile",
+    icon: User,
+    href: "/logistics/profile",
   },
   {
     id: "settings",

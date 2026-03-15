@@ -7,7 +7,7 @@ const {
   getOrderDetails,
   acceptOrder,
   getMyOrders,
-} = require("../controller/orderController");
+} = require("../controllers/orderController");
 
 const { auth, rolecheck } = require("../middleware/auth");
 
