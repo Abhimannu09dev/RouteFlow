@@ -379,63 +379,63 @@ async function resetPassword(req, res) {
   }
 }
 
-async function accountVerificationStatus(req, res) {
-  try {
-    const { email } = req.body;
+// async function accountVerificationStatus(req, res) {
+//   try {
+//     const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
-    }
+//     if (!email) {
+//       return res.status(400).json({ error: "Email is required" });
+//     }
 
-    // Check user exists first
-    const userExists = await User.findOne({ email, isAccountVerified: false });
-    if (!userExists) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    if (userExists.isAccountVerified) {
-      return res.status(200).json({ message: "Account already verified" });
-    }
+//     // Check user exists first
+//     const userExists = await User.findOne({ email, isAccountVerified: false });
+//     if (!userExists) {
+//       return res.status(404).json({ error: "User not found" });
+//     }
+//     if (userExists.isAccountVerified) {
+//       return res.status(200).json({ message: "Account already verified" });
+//     }
 
-    // Build update object (only update provided fields)
-    const updatableFields = [
-      "companyName",
-      "contactNumber",
-      "panNo",
-      "companyLocation",
-      "companyDescription",
-      "companyLogo",
-      "companyDocument",
-      "companyWebsite",
-    ];
+//     // Build update object (only update provided fields)
+//     const updatableFields = [
+//       "companyName",
+//       "contactNumber",
+//       "panNo",
+//       "companyLocation",
+//       "companyDescription",
+//       "companyLogo",
+//       "companyDocument",
+//       "companyWebsite",
+//     ];
 
-    const updateData = {};
-    for (const key of updatableFields) {
-      if (req.body[key] !== undefined) {
-        updateData[key] = req.body[key];
-      }
-    }
+//     const updateData = {};
+//     for (const key of updatableFields) {
+//       if (req.body[key] !== undefined) {
+//         updateData[key] = req.body[key];
+//       }
+//     }
 
-    // Update and return updated document if you need it
-    const updatedUser = await User.findOneAndUpdate(
-      { email },
-      { $set: updateData },
-      { new: true, runValidators: true },
-    );
+//     // Update and return updated document if you need it
+//     const updatedUser = await User.findOneAndUpdate(
+//       { email },
+//       { $set: updateData },
+//       { new: true, runValidators: true },
+//     );
 
-    return res.status(200).json({
-      message: "Account details sent for verification",
-      user: updatedUser, // optional: remove if you don't want to return user
-    });
-  } catch (error) {
-    console.error(
-      "Error updating account verification details:",
-      error.message,
-    );
-    return res
-      .status(500)
-      .json({ error: "Failed to update account verification details" });
-  }
-}
+//     return res.status(200).json({
+//       message: "Account details sent for verification",
+//       user: updatedUser, // optional: remove if you don't want to return user
+//     });
+//   } catch (error) {
+//     console.error(
+//       "Error updating account verification details:",
+//       error.message,
+//     );
+//     return res
+//       .status(500)
+//       .json({ error: "Failed to update account verification details" });
+//   }
+// }
 
 module.exports = {
   createUser,
@@ -444,5 +444,5 @@ module.exports = {
   resendOtp,
   forgotPassword,
   resetPassword,
-  accountVerificationStatus,
+  // accountVerificationStatus,
 };
