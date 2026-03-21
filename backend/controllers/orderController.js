@@ -21,21 +21,22 @@ async function createOrder(req, res) {
       routeFrom,
       routeTo,
       additionalInfo,
+      expectedPrice,
     } = req.body;
 
-    // Basic field validation
     if (
       !productDetails ||
       !quantity ||
       !weight ||
       !vehicleType ||
       !routeFrom ||
+      !expectedPrice ||
       !routeTo
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "productDetails, quantity, weight, vehicleType, routeFrom and routeTo are required",
+          "productDetails, quantity, weight, vehicleType, routeFrom, expectedPrice and routeTo are required",
       });
     }
 
@@ -51,11 +52,10 @@ async function createOrder(req, res) {
       routeFrom,
       routeTo,
       additionalInfo: additionalInfo || "",
+      expectedPrice: expectedPrice || null,
     });
 
     await order.save();
-
-    // Notify connected logistics companies via WebSocket
     notifyLogisticsNewOrder(order);
 
     return res.status(201).json({ success: true, order });
@@ -70,7 +70,6 @@ async function createOrder(req, res) {
     });
   }
 }
-
 async function getAvailableOrders(req, res) {
   try {
     const role = req.user.role;
