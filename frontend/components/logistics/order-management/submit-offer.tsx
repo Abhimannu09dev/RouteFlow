@@ -27,7 +27,7 @@ type Props = {
   orderId: string;
   orderDetails: string;
   expectedPrice?: number | null;
-  existingOffer: Offer | null;
+  existingOffer: Offer | null; // if set, we are updating an existing bid
   onClose: () => void;
   onSuccess: (offer: Offer) => void;
 };
@@ -40,7 +40,7 @@ export default function SubmitOfferModal({
   onClose,
   onSuccess,
 }: Props) {
-  const isUpdate = existingOffer && existingOffer.status === "pending";
+  const isUpdate = !!(existingOffer && existingOffer.status === "pending");
 
   const [price, setPrice] = useState(
     existingOffer?.proposedPrice?.toString() || "",
@@ -51,12 +51,14 @@ export default function SubmitOfferModal({
   const [note, setNote] = useState(existingOffer?.note || "");
   const [isLoading, setIsLoading] = useState(false);
 
-  const bidAboveExpected =
-    expectedPrice && price && Number(price) > expectedPrice;
+  const numPrice = Number(price);
+  const priceDiff =
+    expectedPrice && numPrice > 0 ? numPrice - expectedPrice : null;
+  const isAboveExpected = priceDiff !== null && priceDiff > 0;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!price || Number(price) <= 0) {
+    if (!price || numPrice <= 0) {
       toast.error("Enter a valid price");
       return;
     }
@@ -67,7 +69,7 @@ export default function SubmitOfferModal({
     setIsLoading(true);
     try {
       const payload = {
-        proposedPrice: Number(price),
+        proposedPrice: numPrice,
         estimatedDeliveryDays: Number(days),
         note: note.trim(),
       };
@@ -79,16 +81,16 @@ export default function SubmitOfferModal({
           existingOffer._id,
           payload,
         );
-        toast.success("Offer updated successfully!");
+        toast.success("Bid updated successfully!");
       } else {
         data = await priceOfferAPI.submitOffer(orderId, payload);
-        toast.success("Offer submitted successfully!");
+        toast.success("Bid submitted successfully!");
       }
 
       onSuccess(data.offer);
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Failed to submit offer");
+      toast.error(error.message || "Failed to submit bid");
     } finally {
       setIsLoading(false);
     }

@@ -20,6 +20,8 @@ import {
   Hash,
 } from "lucide-react";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type OrderStatus =
   | "pending"
   | "accepted"
@@ -42,15 +44,19 @@ type Order = {
   additionalInfo?: string;
   createdAt: string;
   updatedAt: string;
-  logistics?: {
-    companyName: string;
-    email: string;
-  } | null;
+  logistics?: { companyName: string; email: string } | null;
 };
+
+// ── Status Config ─────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
   OrderStatus,
-  { label: string; color: string; bg: string; icon: React.ElementType }
+  {
+    label: string;
+    color: string;
+    bg: string;
+    icon: React.ElementType;
+  }
 > = {
   pending: {
     label: "Pending",
@@ -92,6 +98,8 @@ const FILTER_TABS: { label: string; value: "all" | OrderStatus }[] = [
   { label: "Delivered", value: "delivered" },
   { label: "Cancelled", value: "cancelled" },
 ];
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   const config = STATUS_CONFIG[status];
@@ -159,6 +167,8 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   );
 }
 
+// ── Main Component ────────────────────────────────────────────────────────────
+
 export default function OrderManagement() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -175,7 +185,6 @@ export default function OrderManagement() {
       const data = await orderAPI.getOrders();
       setOrders(Array.isArray(data.orders) ? data.orders : []);
     } catch (error: any) {
-      // Only show error toast on manual refresh, not initial load
       if (silent) toast.error("Failed to refresh orders");
       setOrders([]);
     } finally {
@@ -221,15 +230,19 @@ export default function OrderManagement() {
     });
   }
 
+  function handleViewOrder(orderId: string) {
+    router.push(`/manufacturer/order-management/${orderId}`);
+  }
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+
   if (isLoading) {
     return (
       <div className="w-full flex flex-col gap-5">
-        {/* Skeleton header */}
         <div className="flex items-center justify-between">
           <div className="h-6 w-40 bg-[#F5F5F5] rounded-lg animate-pulse" />
           <div className="h-9 w-32 bg-[#F5F5F5] rounded-xl animate-pulse" />
         </div>
-        {/* Skeleton stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
             <div
@@ -238,7 +251,6 @@ export default function OrderManagement() {
             />
           ))}
         </div>
-        {/* Skeleton rows */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
           {[...Array(5)].map((_, i) => (
             <div
@@ -251,8 +263,11 @@ export default function OrderManagement() {
     );
   }
 
+  // ── Render ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="w-full flex flex-col gap-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#252C32]">
@@ -271,6 +286,7 @@ export default function OrderManagement() {
         </Link>
       </div>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Orders"
@@ -298,10 +314,10 @@ export default function OrderManagement() {
         />
       </div>
 
+      {/* Table card */}
       <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
         {/* Toolbar */}
         <div className="p-4 border-b border-[#F5F5F5] flex flex-col sm:flex-row gap-3">
-          {/* Search */}
           <div className="relative flex-1">
             <Search
               size={14}
@@ -315,7 +331,6 @@ export default function OrderManagement() {
               className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition"
             />
           </div>
-          {/* Refresh */}
           <button
             onClick={() => fetchOrders(true)}
             disabled={isRefreshing}
@@ -329,7 +344,7 @@ export default function OrderManagement() {
           </button>
         </div>
 
-        {/* Filter Tabs */}
+        {/* Filter tabs */}
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {FILTER_TABS.map((tab) => {
             const count =
@@ -363,7 +378,7 @@ export default function OrderManagement() {
           })}
         </div>
 
-        {/* Table — desktop */}
+        {/* Content */}
         {filteredOrders.length === 0 ? (
           <EmptyState filtered={activeFilter !== "all" || searchQuery !== ""} />
         ) : (
@@ -435,7 +450,7 @@ export default function OrderManagement() {
                       {/* Vehicle + Docs */}
                       <td className="px-4 py-3.5">
                         <p className="text-xs text-[#252C32] capitalize">
-                          {order.vehicleType?.replace("_", " ") || "—"}
+                          {order.vehicleType?.replace(/_/g, " ") || "—"}
                         </p>
                         <div className="flex gap-1 mt-1">
                           {order.invoiceNeeded && (
@@ -481,17 +496,21 @@ export default function OrderManagement() {
                         </p>
                       </td>
 
-                      {/* View */}
+                      {/* View — shows "View Bids" on pending, arrow on others */}
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() =>
-                            router.push(
-                              `/manufacturer/order-management/${order.orderId}`,
-                            )
-                          }
-                          className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#838383] hover:text-primary transition"
+                          onClick={() => handleViewOrder(order.orderId)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                            order.status === "pending"
+                              ? "bg-primary/10 text-primary hover:bg-primary/20"
+                              : "hover:bg-[#F5F5F5] text-[#838383] hover:text-primary"
+                          }`}
                         >
-                          <ChevronRight size={16} />
+                          {order.status === "pending" ? (
+                            "View Bids"
+                          ) : (
+                            <ChevronRight size={16} />
+                          )}
                         </button>
                       </td>
                     </tr>
@@ -506,11 +525,7 @@ export default function OrderManagement() {
                 <div
                   key={order._id}
                   className="p-4 hover:bg-[#FAFAFA] transition cursor-pointer"
-                  onClick={() =>
-                    router.push(
-                      `/manufacturer/order-management/${order.orderId}`,
-                    )
-                  }
+                  onClick={() => handleViewOrder(order.orderId)}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
@@ -530,11 +545,15 @@ export default function OrderManagement() {
                     </span>
                     <span>{formatDate(order.createdAt)}</span>
                   </div>
-                  {order.logistics && (
+                  {order.logistics ? (
                     <p className="text-xs text-[#5B6871] mt-1">
                       Partner: {order.logistics.companyName}
                     </p>
-                  )}
+                  ) : order.status === "pending" ? (
+                    <p className="text-xs text-primary font-medium mt-1">
+                      Tap to view bids →
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -543,7 +562,7 @@ export default function OrderManagement() {
 
         {/* Footer */}
         {filteredOrders.length > 0 && (
-          <div className="px-4 py-3 border-t border-[#F5F5F5] flex items-center justify-between">
+          <div className="px-4 py-3 border-t border-[#F5F5F5]">
             <p className="text-xs text-[#838383]">
               Showing{" "}
               <span className="font-medium text-[#252C32]">

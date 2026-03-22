@@ -1,33 +1,26 @@
 const express = require("express");
+const router = express.Router();
 
 const {
   createOrder,
   getAvailableOrders,
-  updateOrderStatus,
   getOrderDetails,
   acceptOrder,
+  updateOrderStatus,
   getMyOrders,
 } = require("../controllers/orderController");
 
-const { auth, rolecheck } = require("../middleware/auth");
+const { rolecheck } = require("../middleware/auth");
 
-const router = express.Router();
-
-router.post("/create/order", auth, createOrder);
-router.get("/orders", auth, getAvailableOrders);
+router.post("/create/order", createOrder);
+router.get("/orders", getAvailableOrders);
+router.get("/my-orders", getMyOrders);
+router.get("/orders/:orderId", getOrderDetails);
+router.put("/orders/:orderId/accept", rolecheck(["logistics"]), acceptOrder);
 router.put(
   "/orders/:orderId/status",
-  auth,
   rolecheck(["logistics"]),
   updateOrderStatus,
 );
-router.get("/orders/:orderId", auth, getOrderDetails);
-router.put(
-  "/orders/:orderId/accept",
-  auth,
-  rolecheck(["logistics"]),
-  acceptOrder,
-);
-router.get("/my-orders", auth, getMyOrders);
 
 module.exports = router;

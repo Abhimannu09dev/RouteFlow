@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import { orderAPI, priceOfferAPI } from "@/lib/api";
+import { orderAPI } from "@/lib/api";
 import {
   Package,
   MapPin,
@@ -192,6 +193,12 @@ function OrderCard({
     </div>
   );
 }
+import { orderAPI, priceOfferAPI } from "@/lib/api";
+import { Package, RefreshCw, Search } from "lucide-react";
+import OrderCard, { type Order, type MyOffer } from "./order-card";
+import SubmitOfferModal from "./submit-offer";
+
+type OfferMap = Record<string, MyOffer>;
 
 export default function OrdersPlacement() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -232,6 +239,7 @@ export default function OrdersPlacement() {
         }
       });
       setOfferMap(newOfferMap);
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
     } catch {
       if (silent) toast.error("Failed to refresh orders");
       setOrders([]);
@@ -251,6 +259,18 @@ export default function OrdersPlacement() {
       ...prev,
       [activeModal.orderId]: offer,
     }));
+  async function handleAccept(orderId: string) {
+    setAcceptingId(orderId);
+    try {
+      await orderAPI.acceptOrder(orderId);
+      toast.success("Order accepted! Check your History tab.");
+      // Remove from available list immediately
+      setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
+    } catch (error: any) {
+      toast.error(error.message || "Failed to accept order");
+    } finally {
+      setAcceptingId(null);
+    }
   }
 
   const filteredOrders = useMemo(() => {
@@ -275,6 +295,7 @@ export default function OrdersPlacement() {
             <div
               key={i}
               className="h-72 bg-[#F5F5F5] rounded-2xl animate-pulse"
+              className="h-64 bg-[#F5F5F5] rounded-2xl animate-pulse"
             />
           ))}
         </div>
@@ -283,6 +304,25 @@ export default function OrdersPlacement() {
   }
 
   return (
+    <div className="flex flex-col gap-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[#252C32]">
+            Available Orders
+          </h1>
+          <p className="text-sm text-[#838383] mt-0.5">
+            Browse and accept open shipment requests from manufacturers
+          </p>
+        </div>
+        <button
+          onClick={() => fetchOrders(true)}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
+        >
+          <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+          Refresh
+        </button>
     <>
       {activeModal && (
         <SubmitOfferModal
@@ -297,6 +337,30 @@ export default function OrdersPlacement() {
           }}
         />
       )}
+      </div>
+
+      {/* Search + count */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search
+            size={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B0B7C3]"
+          />
+          <input
+            type="text"
+            placeholder="Search by product, city, or company..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition"
+          />
+        </div>
+        <span className="text-xs text-[#838383] shrink-0">
+          <span className="font-semibold text-[#252C32]">
+            {filteredOrders.length}
+          </span>{" "}
+          order{filteredOrders.length !== 1 ? "s" : ""} available
+        </span>
+      </div>
 
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between">

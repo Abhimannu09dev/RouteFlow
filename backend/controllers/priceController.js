@@ -14,6 +14,7 @@ function deleteFile(filename) {
   }
 }
 
+// Get current user's profile
 async function getProfile(req, res) {
   try {
     const user = await User.findById(req.user.id).select(
@@ -36,6 +37,7 @@ async function getProfile(req, res) {
   }
 }
 
+// Update profile
 async function updateProfile(req, res) {
   try {
     const {
@@ -108,6 +110,7 @@ async function updateProfile(req, res) {
   }
 }
 
+//  Upload documents
 async function uploadDocuments(req, res) {
   try {
     if (
@@ -201,7 +204,7 @@ async function uploadDocuments(req, res) {
   }
 }
 
-// ── Delete a specific document
+//  Delete a specific document
 async function deleteDocument(req, res) {
   try {
     const { documentId } = req.params;
@@ -242,6 +245,7 @@ async function deleteDocument(req, res) {
   }
 }
 
+//  Submit profile for admin verification
 async function submitForVerification(req, res) {
   try {
     const user = await User.findById(req.user.id);
