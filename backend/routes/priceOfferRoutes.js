@@ -11,7 +11,7 @@ const {
 
 const { rolecheck } = require("../middleware/auth");
 
-router.post("/:orderId/offers", rolecheck(["manufacturer"]), submitOffer);
+router.post("/:orderId/offers", rolecheck(["logistics"]), submitOffer);
 router.get("/:orderId/offers", getOffers);
 router.put("/:orderId/offers/:offerId", rolecheck(["logistics"]), updateOffer);
 router.delete(

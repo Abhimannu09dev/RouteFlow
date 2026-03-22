@@ -101,11 +101,11 @@ export default function SubmitOfferModal({
     setIsLoading(true);
     try {
       await priceOfferAPI.withdrawOffer(orderId, existingOffer._id);
-      toast.success("Offer withdrawn");
+      toast.success("Bid withdrawn");
       onSuccess({ ...existingOffer, status: "withdrawn" });
       onClose();
     } catch (error: any) {
-      toast.error(error.message || "Failed to withdraw offer");
+      toast.error(error.message || "Failed to withdraw bid");
     } finally {
       setIsLoading(false);
     }
@@ -114,10 +114,11 @@ export default function SubmitOfferModal({
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl border border-[#E5E9EB] w-full max-w-md">
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#F5F5F5]">
           <div>
             <p className="text-sm font-semibold text-[#252C32]">
-              {isUpdate ? "Update Your Offer" : "Submit Price Offer"}
+              {isUpdate ? "Update Your Bid" : "Place a Bid"}
             </p>
             <p className="text-xs text-[#838383] mt-0.5 truncate max-w-[280px]">
               {orderDetails}
@@ -132,26 +133,35 @@ export default function SubmitOfferModal({
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
-          {expectedPrice && expectedPrice > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
-              <Info size={14} className="text-blue-500 shrink-0" />
+          {/* Expected price reference */}
+          {expectedPrice && expectedPrice > 0 ? (
+            <div className="flex items-start gap-2.5 px-3 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <Info size={15} className="text-blue-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-semibold text-blue-700">
                   Manufacturer&apos;s Expected Price
                 </p>
-                <p className="text-sm font-bold text-blue-800">
+                <p className="text-lg font-bold text-blue-800 leading-tight">
                   NPR {expectedPrice.toLocaleString()}
                 </p>
                 <p className="text-xs text-blue-500 mt-0.5">
-                  You can bid above or below this price
+                  Submit your bid — manufacturer will compare all offers
                 </p>
               </div>
             </div>
+          ) : (
+            <div className="flex items-center gap-2 px-3 py-2.5 bg-[#F5F5F5] border border-[#E5E9EB] rounded-xl">
+              <Info size={13} className="text-[#838383] shrink-0" />
+              <p className="text-xs text-[#838383]">
+                No expected price set — open bidding
+              </p>
+            </div>
           )}
 
+          {/* Price */}
           <div>
             <label className="text-xs font-medium text-[#5B6871] mb-1.5 block">
-              Your Proposed Price (NPR) <span className="text-red-400">*</span>
+              Your Bid Price (NPR) <span className="text-red-400">*</span>
             </label>
             <div className="relative">
               <DollarSign
@@ -162,26 +172,27 @@ export default function SubmitOfferModal({
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="e.g. 14000"
+                placeholder="Enter your price"
                 min={1}
                 className="w-full pl-9 pr-3 py-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>
-
-            {expectedPrice && price && Number(price) > 0 && (
-              <div
-                className={`mt-1.5 flex items-center gap-1.5 text-xs font-medium ${
-                  bidAboveExpected ? "text-amber-600" : "text-green-600"
+            {/* Live comparison */}
+            {expectedPrice && numPrice > 0 && priceDiff !== null && (
+              <p
+                className={`text-xs font-medium mt-1.5 flex items-center gap-1 ${
+                  isAboveExpected ? "text-amber-600" : "text-green-600"
                 }`}
               >
                 <DollarSign size={11} />
-                {bidAboveExpected
-                  ? `NPR ${(Number(price) - expectedPrice).toLocaleString()} above expected price`
-                  : `NPR ${(expectedPrice - Number(price)).toLocaleString()} below expected price`}
-              </div>
+                {isAboveExpected
+                  ? `NPR ${priceDiff.toLocaleString()} above expected price`
+                  : `NPR ${Math.abs(priceDiff).toLocaleString()} below expected price`}
+              </p>
             )}
           </div>
 
+          {/* Delivery days */}
           <div>
             <label className="text-xs font-medium text-[#5B6871] mb-1.5 block">
               Estimated Delivery Days <span className="text-red-400">*</span>
@@ -202,9 +213,10 @@ export default function SubmitOfferModal({
             </div>
           </div>
 
+          {/* Note */}
           <div>
             <label className="text-xs font-medium text-[#5B6871] mb-1.5 block">
-              Additional Note{" "}
+              Note{" "}
               <span className="text-[#B0B7C3] font-normal">(optional)</span>
             </label>
             <div className="relative">
@@ -216,19 +228,20 @@ export default function SubmitOfferModal({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Includes packaging, door-to-door delivery..."
-                rows={3}
+                rows={2}
                 className="w-full pl-9 pr-3 py-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] resize-none outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>
           </div>
 
+          {/* Actions */}
           <div className="flex gap-3 pt-1">
             {isUpdate && (
               <button
                 type="button"
                 onClick={handleWithdraw}
                 disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200 text-red-500 text-xs font-medium hover:bg-red-50 transition disabled:opacity-60"
+                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 text-red-500 text-xs font-medium hover:bg-red-50 transition disabled:opacity-60"
               >
                 <X size={13} />
                 Withdraw
@@ -249,8 +262,8 @@ export default function SubmitOfferModal({
               {isLoading
                 ? "Submitting..."
                 : isUpdate
-                  ? "Update Offer"
-                  : "Submit Offer"}
+                  ? "Update Bid"
+                  : "Submit Bid"}
             </button>
           </div>
         </form>

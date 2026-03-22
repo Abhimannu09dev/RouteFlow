@@ -237,7 +237,7 @@ export default function OrderCard({
 
       {order.additionalInfo && (
         <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 leading-relaxed">
-          📝 {order.additionalInfo}
+          {order.additionalInfo}
         </p>
       )}
 
