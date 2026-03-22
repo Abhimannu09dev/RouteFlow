@@ -6,20 +6,21 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
-const { auth } = require("./middleware/auth");
-const User = require("./models/userModel");
 
-const { initWebSocket } = require("./websocket");
+const { auth } = require("./middleware/auth");
+const { uploadProfileFiles } = require("./middleware/upload");
+const { initWebSocket } = require("./websocket"); // ← Socket.io setup
+const User = require("./models/userModel");
 const routes = require("./routes");
 
-// App Setup
+//  App setup
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer(app); // http.Server needed for Socket.io
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// Middleware
+//  Middleware
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
@@ -37,8 +38,6 @@ app.use(
 );
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Basic Route
 app.get("/", (req, res) => {
   res.send("RouteFlow API is running");
 });
@@ -63,19 +62,16 @@ app.get("/auth/me", auth, async (req, res) => {
   }
 });
 
-app.use("/", routes);
-
-// Logout
+//  Logout
 app.post("/auth/logout", (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: false,
-    sameSite: "lax",
-  });
+  res.clearCookie("token", { httpOnly: true, secure: false, sameSite: "lax" });
   res.status(200).json({ message: "Logged out successfully" });
 });
 
-// Database + Server Start
+//  All other routes
+app.use("/", routes);
+
+//  Database + Server
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");
   process.exit(1);
@@ -85,7 +81,10 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
+
+    // Initialize Socket.io AFTER DB is ready
     initWebSocket(server);
+
     server.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
