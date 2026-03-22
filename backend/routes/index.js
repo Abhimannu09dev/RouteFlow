@@ -1,17 +1,18 @@
 const express = require("express");
+const router = express.Router();
 
 const authRoutes = require("./authRoutes");
 const orderRoutes = require("./orderRoutes");
 const profileRoutes = require("./profileRoutes");
 const adminRoutes = require("./adminRoutes");
+const priceOfferRoutes = require("./priceOfferRoutes");
 
 const { auth } = require("../middleware/auth");
 
-const router = express.Router();
-
 router.use("/auth", authRoutes);
 router.use("/", auth, orderRoutes);
-router.use("/", auth, profileRoutes);
+router.use("/orders", auth, priceOfferRoutes);
+router.use("/profile", auth, profileRoutes);
 router.use("/admin", auth, adminRoutes);
 
 module.exports = router;
