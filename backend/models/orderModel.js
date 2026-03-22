@@ -13,6 +13,7 @@ const orderSchema = new Schema({
   vatBillNeeded: { type: Boolean, default: false, required: true },
   invoiceDocuments: { type: String },
   vatBillDocuments: { type: String },
+  expectedPrice: { type: Number, default: null },
   status: {
     type: String,
     enum: ["pending", "accepted", "in transit", "delivered", "cancelled"],

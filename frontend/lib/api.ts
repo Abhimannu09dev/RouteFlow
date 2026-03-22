@@ -4,7 +4,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 async function apiFetch(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    credentials: "include", // ← sends cookies automatically
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -15,6 +15,8 @@ async function apiFetch(path: string, options: RequestInit = {}) {
     throw new Error(data.error || data.message || "Request failed");
   return data;
 }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
 export const authAPI = {
   register: (
@@ -44,7 +46,6 @@ export const authAPI = {
     apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
-      // cookie is set automatically by the browser from the server response
     }),
 
   forgotPassword: (email: string) =>
@@ -53,10 +54,18 @@ export const authAPI = {
       body: JSON.stringify({ email }),
     }),
 
+  resetPassword: (token: string, password: string, confirmPassword: string) =>
+    apiFetch("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password, confirmPassword }),
+    }),
+
   logout: () => apiFetch("/auth/logout", { method: "POST" }),
 
   me: () => apiFetch("/auth/me"),
 };
+
+// ── Orders ────────────────────────────────────────────────────────────────────
 
 export type CreateOrderPayload = {
   productDetails: string;
@@ -68,6 +77,7 @@ export type CreateOrderPayload = {
   routeFrom: string;
   routeTo: string;
   additionalInfo?: string;
+  expectedPrice?: number;
 };
 
 export const orderAPI = {
@@ -90,5 +100,43 @@ export const orderAPI = {
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",
       body: JSON.stringify({ status }),
+    }),
+};
+
+// ── Price Offers ──────────────────────────────────────────────────────────────
+
+export type SubmitOfferPayload = {
+  proposedPrice: number;
+  estimatedDeliveryDays: number;
+  note?: string;
+};
+
+export const priceOfferAPI = {
+  submitOffer: (orderId: string, payload: SubmitOfferPayload) =>
+    apiFetch(`/orders/${orderId}/offers`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  getOffers: (orderId: string) => apiFetch(`/orders/${orderId}/offers`),
+
+  updateOffer: (
+    orderId: string,
+    offerId: string,
+    payload: Partial<SubmitOfferPayload>,
+  ) =>
+    apiFetch(`/orders/${orderId}/offers/${offerId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+
+  withdrawOffer: (orderId: string, offerId: string) =>
+    apiFetch(`/orders/${orderId}/offers/${offerId}`, {
+      method: "DELETE",
+    }),
+
+  acceptOffer: (orderId: string, offerId: string) =>
+    apiFetch(`/orders/${orderId}/offers/${offerId}/accept`, {
+      method: "PUT",
     }),
 };
