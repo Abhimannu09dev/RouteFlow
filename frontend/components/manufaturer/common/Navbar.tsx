@@ -1,137 +1,92 @@
-import { Bell, ChevronRight, User, X } from "lucide-react";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { User } from "lucide-react";
 import {
   primarySidebarItems,
   secondarySidebarItems,
 } from "@/components/manufaturer/common/nav-menu";
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import NotificationPanel from "@/components/shared/notification-panel";
+import { authAPI } from "@/lib/api";
 
 const Navbar = ({ pathname }: { pathname: string }) => {
-  const [showNotification, setShowNotification] = useState(false);
-  const [showUser, setShowUser] = useState(false);
-  const notificationRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const userRef = useRef<HTMLDivElement>(null);
-  let title = "";
+  const [showUser, setShowUser] = useState(false);
 
-  title =
+  // Resolve page title from nav-menu
+  let title =
     primarySidebarItems.find((item) => pathname.includes(item.href))?.label ||
     "";
-
   if (!title)
     title =
       secondarySidebarItems.find((item) => pathname.includes(item.href))
         ?.label || "";
-  const handleNotificationClicked = () => {
-    setShowNotification((prev) => !prev);
-    console.log("Notification Clicked");
-  };
 
-  const handleProfileClicked = () => {
-    setShowUser((prev) => !prev);
-    console.log("Profile Clicked");
-  };
-
-  const UserInfo = {
-    userID: "1",
-    userName: "James Maharjan",
-    userEmail: "sthajames423@gmail.com",
-  };
-
-  const Notifications = [
-    {
-      id: "1",
-      heading: "Jaya Mata Radhika Transport",
-      notification: "A new order has been placed. Order ID: #12345.",
-      time: "Just now",
-    },
-  ];
-
-  // useEffect to handle the function onClick on window
+  // Close user dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(event.target as Node)
-      ) {
-        setShowNotification(false);
-      }
       if (userRef.current && !userRef.current.contains(event.target as Node)) {
         setShowUser(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  async function handleLogout() {
+    await authAPI.logout();
+    router.replace("/auth?action=sign-in");
+  }
+
   return (
-    <header className="bg-white border-b border-[#E5E9EB] p-3 lg:px-8 sticky to-0 z-10">
+    <header className="bg-white border-b border-[#E5E9EB] p-3 lg:px-8 sticky top-0 z-10">
       <div className="flex flex-row justify-between items-center">
         <p className="text-lg font-medium text-[#252C32]">{title}</p>
-        <div className="flex flex-row items-center gap-4 text-[#5B6871] select-none">
-          <Bell
-            className="inline cursor-pointer"
-            color="#5B6871"
-            size={18}
-            onClick={handleNotificationClicked}
-          />
-          <User
-            className="inline cursor-pointer"
-            color="#5B6871"
-            size={18}
-            onClick={handleProfileClicked}
-          />
+
+        <div className="flex flex-row items-center gap-3 text-[#5B6871] select-none">
+          {/* Real-time notification bell */}
+          <NotificationPanel role="manufacturer" />
+
+          {/* User dropdown */}
+          <div className="relative" ref={userRef}>
+            <button
+              onClick={() => setShowUser((prev) => !prev)}
+              className="p-1.5 rounded-lg hover:bg-[#F5F5F5] transition"
+            >
+              <User size={18} color="#5B6871" />
+            </button>
+
+            {showUser && (
+              <div className="absolute top-10 right-0 w-52 bg-white border border-[#E5E9EB] rounded-2xl shadow-lg p-3 flex flex-col gap-1 text-sm z-50">
+                <Link
+                  href="/manufacturer/profile"
+                  onClick={() => setShowUser(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
+                >
+                  Profile
+                </Link>
+                <Link
+                  href="/manufacturer/settings"
+                  onClick={() => setShowUser(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
+                >
+                  Settings
+                </Link>
+                <hr className="border-[#E5E9EB] my-1" />
+                <button
+                  onClick={handleLogout}
+                  className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-500 transition text-left"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      {showNotification && (
-        <div
-          ref={notificationRef}
-          className="m-4 absolute top-8 right-0 bg-white border border-[#E5E9EB] p-4 flex flex-col space-y-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm"
-        >
-          <div className="flex justify-between text-[#222529] font-medium">
-            <p>Notifications</p>
-            <X onClick={handleNotificationClicked} />
-          </div>
-          <hr className="text-[#E1E1E1]" />
-          <ul>
-            {Notifications.map((notification) => (
-              <div
-                ref={userRef}
-                key={notification.id}
-                className="flex space-x-2 items-center gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm"
-              >
-                <div className="flex flex-col">
-                  <p>{notification.heading}</p>
-                  <p className="text-sm">{notification.notification}</p>
-                </div>
-                <Link href="#">
-                  <ChevronRight />
-                </Link>
-              </div>
-            ))}
-          </ul>
-        </div>
-      )}
-      {showUser && (
-        <div
-          ref={userRef}
-          className="m-4 text-[#838383] absolute top-8 right-0 w-64 bg-white border border-[#E5E9EB] p-4 flex flex-col space-y-2 mt-4 gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm"
-        >
-          <div>
-            <p className="text-[#252C32] font-semibold">{UserInfo.userName}</p>
-            <p>{UserInfo.userEmail}</p>
-          </div>
-          <hr className="text-[#E1E1E1]" />
-          <Link href="#">Profile</Link>
-          <Link href="#">Setting</Link>
-          <hr className="text-[#E1E1E1]" />
-          <Link href="/auth" className="text-[#FF8787]">
-            Logout{" "}
-          </Link>
-        </div>
-      )}
     </header>
   );
 };
