@@ -1,5 +1,6 @@
 const Order = require("../models/orderModel");
 const crypto = require("crypto");
+const PriceOffer = require("../models/priceOfferModel");
 const { notifyLogisticsNewOrder } = require("../websocket/orderEvents");
 
 async function createOrder(req, res) {
@@ -21,21 +22,22 @@ async function createOrder(req, res) {
       routeFrom,
       routeTo,
       additionalInfo,
+      expectedPrice,
     } = req.body;
 
-    // Basic field validation
     if (
       !productDetails ||
       !quantity ||
       !weight ||
       !vehicleType ||
       !routeFrom ||
+      !expectedPrice ||
       !routeTo
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "productDetails, quantity, weight, vehicleType, routeFrom and routeTo are required",
+          "productDetails, quantity, weight, vehicleType, routeFrom, expectedPrice and routeTo are required",
       });
     }
 
@@ -51,11 +53,10 @@ async function createOrder(req, res) {
       routeFrom,
       routeTo,
       additionalInfo: additionalInfo || "",
+      expectedPrice: expectedPrice || null,
     });
 
     await order.save();
-
-    // Notify connected logistics companies via WebSocket
     notifyLogisticsNewOrder(order);
 
     return res.status(201).json({ success: true, order });
@@ -70,7 +71,6 @@ async function createOrder(req, res) {
     });
   }
 }
-
 async function getAvailableOrders(req, res) {
   try {
     const role = req.user.role;
@@ -79,16 +79,14 @@ async function getAvailableOrders(req, res) {
       const orders = await Order.find({ manufacturer: req.user.id })
         .populate("manufacturer", "companyName email")
         .populate("logistics", "companyName email")
-        .sort({ createdAt: -1 }); // newest first
+        .sort({ createdAt: -1 });
 
-      // Always return 200 — empty array is a valid response
       return res.status(200).json({ success: true, orders });
     } else if (role === "logistics") {
-      const orders = await Order.find({ logistics: null })
+      const orders = await Order.find({ logistics: null, status: "pending" })
         .populate("manufacturer", "companyName email")
         .sort({ createdAt: -1 });
 
-      // Always return 200 — empty array is a valid response
       return res.status(200).json({ success: true, orders });
     } else {
       return res.status(403).json({ success: false, message: "Access denied" });
@@ -111,7 +109,6 @@ async function getMyOrders(req, res) {
         .populate("manufacturer", "companyName email")
         .sort({ updatedAt: -1 });
 
-      // Always return 200 — empty array is a valid response
       return res.status(200).json({ success: true, orders });
     } else if (role === "manufacturer") {
       const orders = await Order.find({ manufacturer: req.user.id })
@@ -161,12 +158,8 @@ async function acceptOrder(req, res) {
     const logisticsId = req.user.id;
 
     const order = await Order.findOneAndUpdate(
-      { orderId, logistics: null }, // only match if still open
-      {
-        logistics: logisticsId,
-        status: "accepted",
-        updatedAt: Date.now(),
-      },
+      { orderId, logistics: null, status: "pending" },
+      { logistics: logisticsId, status: "accepted", updatedAt: Date.now() },
       { new: true },
     )
       .populate("manufacturer", "companyName email")
@@ -178,6 +171,10 @@ async function acceptOrder(req, res) {
         message: "Order already taken or not found",
       });
     }
+    await PriceOffer.updateMany(
+      { order: order._id, status: "pending" },
+      { status: "rejected", updatedAt: new Date() },
+    );
 
     return res.status(200).json({ success: true, order });
   } catch (error) {
@@ -204,7 +201,7 @@ async function updateOrderStatus(req, res) {
     }
 
     const order = await Order.findOneAndUpdate(
-      { orderId, logistics: userId }, // ensures only assigned logistics can update
+      { orderId, logistics: userId },
       { status, updatedAt: Date.now() },
       { new: true },
     )

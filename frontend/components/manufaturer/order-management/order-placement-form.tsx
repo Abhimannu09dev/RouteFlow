@@ -11,6 +11,7 @@ import {
   FileText,
   ChevronRight,
   Loader2,
+  DollarSign,
 } from "lucide-react";
 
 const NEPALI_CITIES = [
@@ -46,6 +47,7 @@ type FormState = {
   vehicleType: string;
   routeFrom: string;
   routeTo: string;
+  expectedPrice: string;
   invoiceNeeded: boolean;
   vatBillNeeded: boolean;
   additionalInfo: string;
@@ -58,6 +60,7 @@ const INITIAL_FORM: FormState = {
   vehicleType: "",
   routeFrom: "",
   routeTo: "",
+  expectedPrice: "",
   invoiceNeeded: false,
   vatBillNeeded: false,
   additionalInfo: "",
@@ -123,9 +126,7 @@ function Toggle({
     >
       <div>
         <p
-          className={`text-sm font-medium ${
-            checked ? "text-primary" : "text-[#252C32]"
-          }`}
+          className={`text-sm font-medium ${checked ? "text-primary" : "text-[#252C32]"}`}
         >
           {label}
         </p>
@@ -161,7 +162,6 @@ export default function OrderPlacementForm() {
   ) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-
     if (errors[name as keyof FormState]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }));
     }
@@ -176,39 +176,29 @@ export default function OrderPlacementForm() {
 
     if (!form.productDetails.trim())
       newErrors.productDetails = "Product details are required";
-
     if (!form.quantity || Number(form.quantity) <= 0)
       newErrors.quantity = "Enter a valid quantity";
-
     if (!form.weight || Number(form.weight) <= 0)
       newErrors.weight = "Enter a valid weight";
-
     if (!form.vehicleType) newErrors.vehicleType = "Select a vehicle type";
-
     if (!form.routeFrom) newErrors.routeFrom = "Select pickup city";
-
     if (!form.routeTo) newErrors.routeTo = "Select destination city";
-
-    if (form.routeFrom && form.routeTo && form.routeFrom === form.routeTo) {
+    if (form.routeFrom && form.routeTo && form.routeFrom === form.routeTo)
       newErrors.routeTo = "Destination must differ from pickup";
-      toast.error("Pickup and destination cannot be the same");
-    }
+    if (form.expectedPrice && Number(form.expectedPrice) <= 0)
+      newErrors.expectedPrice = "Enter a valid price";
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     if (!validate()) {
       toast.error("Please fix the errors before submitting.");
       return;
     }
-
     setIsSubmitting(true);
-
     try {
       const payload: CreateOrderPayload = {
         productDetails: form.productDetails.trim(),
@@ -220,31 +210,20 @@ export default function OrderPlacementForm() {
         routeFrom: form.routeFrom,
         routeTo: form.routeTo,
         additionalInfo: form.additionalInfo.trim() || undefined,
+        expectedPrice: form.expectedPrice
+          ? Number(form.expectedPrice)
+          : undefined,
       };
-
       await orderAPI.createOrder(payload);
-
       toast.success("Order placed successfully!");
-      setTimeout(() => {
-        router.push("/manufacturer/order-management");
-      }, 1500);
+      setTimeout(() => router.push("/manufacturer/order-management"), 1500);
     } catch (error: any) {
-      console.error(error);
-
-      if (error?.message) {
-        toast.error(error.message);
-      } else {
-        toast.error("Something went wrong while placing the order.");
-      }
+      toast.error(
+        error.message || "Something went wrong while placing the order.",
+      );
     } finally {
       setIsSubmitting(false);
     }
-  }
-
-  function handleCancel() {
-    toast.info("Order creation cancelled.");
-    toast.info("Order creation cancelled.");
-    setTimeout(() => router.push("/manufacturer/order-management"), 1500);
   }
 
   return (
@@ -266,18 +245,15 @@ export default function OrderPlacementForm() {
             subtitle="Describe what needs to be shipped"
           />
 
-          {/* Product Details */}
           <div className="mb-4">
             <FieldLabel label="Product Details" required />
             <textarea
               name="productDetails"
               value={form.productDetails}
               onChange={handleChange}
-              placeholder="e.g. Cotton fabric rolls, electronics components, raw materials..."
+              placeholder="e.g. Cotton fabric rolls, electronics components..."
               rows={3}
-              className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] resize-none outline-none focus:ring-2 focus:ring-primary/30 transition ${
-                errors.productDetails ? "ring-2 ring-red-300" : ""
-              }`}
+              className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] resize-none outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.productDetails ? "ring-2 ring-red-300" : ""}`}
             />
             {errors.productDetails && (
               <p className="text-xs text-red-400 mt-1">
@@ -286,7 +262,6 @@ export default function OrderPlacementForm() {
             )}
           </div>
 
-          {/* Quantity + Weight */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel label="Quantity (units)" required />
@@ -297,9 +272,7 @@ export default function OrderPlacementForm() {
                 onChange={handleChange}
                 placeholder="e.g. 100"
                 min={1}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition ${
-                  errors.quantity ? "ring-2 ring-red-300" : ""
-                }`}
+                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.quantity ? "ring-2 ring-red-300" : ""}`}
               />
               {errors.quantity && (
                 <p className="text-xs text-red-400 mt-1">{errors.quantity}</p>
@@ -315,9 +288,7 @@ export default function OrderPlacementForm() {
                 placeholder="e.g. 250"
                 min={0.1}
                 step={0.1}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition ${
-                  errors.weight ? "ring-2 ring-red-300" : ""
-                }`}
+                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.weight ? "ring-2 ring-red-300" : ""}`}
               />
               {errors.weight && (
                 <p className="text-xs text-red-400 mt-1">{errors.weight}</p>
@@ -326,14 +297,12 @@ export default function OrderPlacementForm() {
           </div>
         </div>
 
-        {/* ── Section 2: Route */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={MapPin}
             title="Shipment Route"
             subtitle="Where is the shipment going?"
           />
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel label="Pickup City" required />
@@ -341,16 +310,14 @@ export default function OrderPlacementForm() {
                 name="routeFrom"
                 value={form.routeFrom}
                 onChange={handleChange}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] outline-none focus:ring-2 focus:ring-primary/30 transition ${
-                  errors.routeFrom ? "ring-2 ring-red-300" : ""
-                }`}
+                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.routeFrom ? "ring-2 ring-red-300" : ""}`}
               >
                 <option value="" disabled>
                   Select city
                 </option>
-                {NEPALI_CITIES.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
+                {NEPALI_CITIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
                   </option>
                 ))}
               </select>
@@ -358,58 +325,48 @@ export default function OrderPlacementForm() {
                 <p className="text-xs text-red-400 mt-1">{errors.routeFrom}</p>
               )}
             </div>
-
-            {/* Arrow between selects */}
-            <div className="relative">
+            <div>
               <FieldLabel label="Destination City" required />
               <select
                 name="routeTo"
                 value={form.routeTo}
                 onChange={handleChange}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] outline-none focus:ring-2 focus:ring-primary/30 transition ${
-                  errors.routeTo ? "ring-2 ring-red-300" : ""
-                }`}
+                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.routeTo ? "ring-2 ring-red-300" : ""}`}
               >
                 <option value="" disabled>
                   Select city
                 </option>
-                {NEPALI_CITIES.filter((c) => c !== form.routeFrom).map(
-                  (city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ),
-                )}
+                {NEPALI_CITIES.filter((c) => c !== form.routeFrom).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
               {errors.routeTo && (
                 <p className="text-xs text-red-400 mt-1">{errors.routeTo}</p>
               )}
             </div>
           </div>
-
-          {/* Route Preview */}
           {form.routeFrom && form.routeTo && (
             <div className="mt-4 flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20">
               <MapPin size={14} className="text-primary shrink-0" />
-              <span className="text-sm text-[#252C32] font-medium">
+              <span className="text-sm font-medium text-[#252C32]">
                 {form.routeFrom}
               </span>
               <ChevronRight size={14} className="text-[#838383]" />
-              <span className="text-sm text-[#252C32] font-medium">
+              <span className="text-sm font-medium text-[#252C32]">
                 {form.routeTo}
               </span>
             </div>
           )}
         </div>
 
-        {/* ── Section 3: Vehicle  */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={Truck}
             title="Vehicle Requirement"
             subtitle="Select the vehicle type for this shipment"
           />
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {VEHICLE_TYPES.map((v) => (
               <button
@@ -426,11 +383,7 @@ export default function OrderPlacementForm() {
                 }`}
               >
                 <p
-                  className={`text-sm font-medium ${
-                    form.vehicleType === v.value
-                      ? "text-primary"
-                      : "text-[#252C32]"
-                  }`}
+                  className={`text-sm font-medium ${form.vehicleType === v.value ? "text-primary" : "text-[#252C32]"}`}
                 >
                   {v.label.split("(")[0].trim()}
                 </p>
@@ -445,36 +398,84 @@ export default function OrderPlacementForm() {
           )}
         </div>
 
-        {/* ── Section 4: Documents */}
+        <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
+          <SectionHeader
+            icon={DollarSign}
+            title="Expected Price"
+            subtitle="Set your budget — logistics companies will bid around this"
+          />
+
+          <div className="relative mb-3">
+            <DollarSign
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B0B7C3]"
+            />
+            <input
+              type="number"
+              name="expectedPrice"
+              value={form.expectedPrice}
+              onChange={handleChange}
+              placeholder="e.g. 15000  (leave blank for open bidding)"
+              min={1}
+              className={`w-full pl-9 pr-3 py-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition ${
+                errors.expectedPrice ? "ring-2 ring-red-300" : ""
+              }`}
+            />
+          </div>
+          {errors.expectedPrice && (
+            <p className="text-xs text-red-400 mb-2">{errors.expectedPrice}</p>
+          )}
+
+          <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+            <DollarSign size={13} className="text-blue-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-600">
+              Logistics companies will see your expected price and submit offers
+              above or below it. You compare all offers and accept the best one.
+              Leave blank if you prefer open bidding.
+            </p>
+          </div>
+
+          {/* Live preview */}
+          {form.expectedPrice && Number(form.expectedPrice) > 0 && (
+            <div className="mt-3 flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20">
+              <DollarSign size={14} className="text-primary shrink-0" />
+              <span className="text-sm text-[#252C32]">
+                Expected price:{" "}
+                <span className="font-semibold text-primary">
+                  NPR {Number(form.expectedPrice).toLocaleString()}
+                </span>
+              </span>
+            </div>
+          )}
+        </div>
+
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={FileText}
             title="Document Requirements"
-            subtitle="Select which documents are needed for this shipment"
+            subtitle="Select which documents are needed"
           />
-
           <div className="flex flex-col gap-3">
             <Toggle
               checked={form.invoiceNeeded}
               onChange={handleToggle("invoiceNeeded")}
               label="Invoice Required"
-              hint="Logistics partner must provide an invoice for this shipment"
+              hint="Logistics partner must provide an invoice"
             />
             <Toggle
               checked={form.vatBillNeeded}
               onChange={handleToggle("vatBillNeeded")}
               label="VAT Bill Required"
-              hint="Logistics partner must provide a VAT bill for this shipment"
+              hint="Logistics partner must provide a VAT bill"
             />
           </div>
         </div>
 
-        {/* ── Section 5: Additional Info */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={FileText}
             title="Additional Information"
-            subtitle="Any special instructions for the logistics partner (optional)"
+            subtitle="Special instructions (optional)"
           />
           <textarea
             name="additionalInfo"
@@ -486,16 +487,20 @@ export default function OrderPlacementForm() {
           />
         </div>
 
-        {/* Actions */}
         <div className="flex items-center justify-end gap-3 pb-6">
           <button
             type="button"
-            onClick={handleCancel}
+            onClick={() => {
+              toast.info("Order creation cancelled.");
+              setTimeout(
+                () => router.push("/manufacturer/order-management"),
+                1500,
+              );
+            }}
             className="px-5 py-2.5 rounded-xl border border-[#E5E9EB] text-sm font-medium text-[#5B6871] hover:bg-[#F5F5F5] transition"
           >
             Cancel
           </button>
-
           <button
             type="submit"
             disabled={isSubmitting}

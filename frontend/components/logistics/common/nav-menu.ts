@@ -7,6 +7,7 @@ import {
   Settings,
   MessageCircleMore,
   User,
+  Gavel,
 } from "lucide-react";
 
 export const primarySidebarItems = [
@@ -27,6 +28,12 @@ export const primarySidebarItems = [
     label: "Orders Placement",
     icon: CalendarArrowUp,
     href: "/logistics/orders-placement",
+  },
+  {
+    id: "bids",
+    label: "Bids",
+    icon: Gavel,
+    href: "/logistics/bids",
   },
   {
     id: "history",
