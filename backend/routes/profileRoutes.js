@@ -11,12 +11,12 @@ const {
   uploadDocuments,
   deleteDocument,
   submitForVerification,
-} = require("../controllers/profileController");
+} = require("../controllers/priceController");
 
-router.get("/profile", auth, getProfile);
-router.put("/profile", auth, uploadProfileFiles, updateProfile);
-router.post("/profile/documents", auth, uploadProfileFiles, uploadDocuments);
-router.delete("/profile/documents/:documentId", auth, deleteDocument);
-router.post("/profile/submit-verification", auth, submitForVerification);
+router.get("/", auth, getProfile);
+router.put("/", auth, uploadProfileFiles, updateProfile);
+router.post("/documents", auth, uploadProfileFiles, uploadDocuments);
+router.delete("/documents/:documentId", auth, deleteDocument);
+router.post("/submit-verification", auth, submitForVerification);
 
 module.exports = router;
