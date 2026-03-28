@@ -1,57 +1,81 @@
-require("dotenv").config({ path: "../.env" });
-const WebSocket = require("ws");
+const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
-const {
-  addUser,
-  removeUser,
-  getUserSocket,
-  getUsersByRole,
-} = require("./connectionManager");
 
-const JWT_SECRET = process.env.JWT_SECRET;
+let io = null;
 
-let wss;
+// Map of userId -> socket.id for targeted notifications
+const userSocketMap = {};
 
 function initWebSocket(server) {
-  wss = new WebSocket.Server({ server });
+  io = new Server(server, {
+    cors: {
+      origin: [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        process.env.FRONTEND_URL || "http://localhost:3000",
+      ],
+      credentials: true,
+    },
+  });
 
-  wss.on("connection", (ws, req) => {
-    console.log("Client connected");
-
+  //  Auth middleware — verify JWT from cookie or handshake auth 
+  io.use((socket, next) => {
     try {
-      const url = new URL(req.url, `http://${req.headers.host}`);
-      const token = url.searchParams.get("token");
+      // Try cookie first, then handshake auth token
+      const cookieHeader = socket.handshake.headers.cookie || "";
+      const tokenFromCookie = cookieHeader
+        .split(";")
+        .find((c) => c.trim().startsWith("token="))
+        ?.split("=")[1];
+
+      const token = tokenFromCookie || socket.handshake.auth?.token;
+
       if (!token) {
-        ws.close(1008, "Token missing");
-        return;
+        return next(new Error("Authentication required"));
       }
-      const decoded = jwt.verify(token, JWT_SECRET);
 
-      const userId = decoded.id;
-      const role = decoded.role;
-
-      addUser(userId, ws, role);
-
-      console.log(`User ${userId} connected with role ${role}`);
-    } catch (error) {
-      console.log("JWT ERROR:", error.message);
-      ws.close(1008, error.message);
-      return;
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      socket.userRole = decoded.role;
+      next();
+    } catch {
+      next(new Error("Invalid token"));
     }
+  });
 
-    ws.on("close", () => {
-      console.log("Client disconnected");
-      removeUser(ws);
+  io.on("connection", (socket) => {
+    const userId = socket.userId;
+    userSocketMap[userId] = socket.id;
+    console.log(`Socket connected: user ${userId} (${socket.userRole})`);
+
+    // Join role-based room for broadcast notifications
+    socket.join(socket.userRole); // "manufacturer" or "logistics"
+
+    socket.on("disconnect", () => {
+      delete userSocketMap[userId];
+      console.log(`Socket disconnected: user ${userId}`);
     });
   });
+
+  console.log("WebSocket server initialized");
+  return io;
 }
 
-function broadcast(data) {
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
+function notifyUser(userId, notification) {
+  if (!io) return;
+  const socketId = userSocketMap[userId?.toString()];
+  if (socketId) {
+    io.to(socketId).emit("notification", notification);
+  }
 }
 
-module.exports = { initWebSocket, broadcast };
+function notifyRole(role, notification) {
+  if (!io) return;
+  io.to(role).emit("notification", notification);
+}
+
+function getIO() {
+  return io;
+}
+
+module.exports = { initWebSocket, notifyUser, notifyRole, getIO };
