@@ -93,9 +93,6 @@ export const orderAPI = {
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
-  acceptOrder: (orderId: string) =>
-    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
-
   updateStatus: (orderId: string, status: string) =>
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",
@@ -139,4 +136,79 @@ export const priceOfferAPI = {
     apiFetch(`/orders/${orderId}/offers/${offerId}/accept`, {
       method: "PUT",
     }),
+};
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+
+export type Message = {
+  _id: string;
+  orderId: string;
+  senderId: { _id: string; companyName: string; email: string; role: string };
+  receiverId: string;
+  content: string;
+  fileUrl: string | null;
+  fileType: "image" | "document" | null;
+  fileName: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export type Conversation = {
+  orderId: string;
+  orderTitle: string;
+  orderStatus: string;
+  isClosed: boolean;
+  otherParty: { _id: string; companyName: string; email: string } | null;
+  lastMessage: {
+    content: string;
+    fileType: string | null;
+    fileName: string | null;
+    sentAt: string;
+    senderName: string;
+  } | null;
+  unreadCount: number;
+};
+
+export const chatAPI = {
+  // All chat threads for the logged-in user
+  getConversations: (): Promise<{
+    success: boolean;
+    conversations: Conversation[];
+  }> => apiFetch("/chat/conversations"),
+
+  // Message history for a specific order (also marks as read)
+  getMessages: (
+    orderId: string,
+  ): Promise<{
+    success: boolean;
+    messages: Message[];
+    isClosed: boolean;
+    orderStatus: string;
+    participants: {
+      manufacturer: { _id: string; companyName: string } | null;
+      logistics: { _id: string; companyName: string } | null;
+    };
+  }> => apiFetch(`/chat/${orderId}/messages`),
+
+  // Total unread count across all chats — for navbar badge
+  getUnreadCount: (): Promise<{ success: boolean; count: number }> =>
+    apiFetch("/chat/unread-count"),
+
+  // File/image upload (plain text goes through socket)
+  sendFile: (
+    orderId: string,
+    receiverId: string,
+    file: File,
+    content?: string,
+  ) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("receiverId", receiverId);
+    if (content) formData.append("content", content);
+    return fetch(`${API_BASE_URL}/chat/${orderId}/send`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    }).then((r) => r.json());
+  },
 };
