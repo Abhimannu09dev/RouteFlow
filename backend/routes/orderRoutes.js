@@ -5,7 +5,6 @@ const {
   createOrder,
   getAvailableOrders,
   getOrderDetails,
-  acceptOrder,
   updateOrderStatus,
   getMyOrders,
 } = require("../controllers/orderController");
@@ -16,7 +15,6 @@ router.post("/create/order", createOrder);
 router.get("/orders", getAvailableOrders);
 router.get("/my-orders", getMyOrders);
 router.get("/orders/:orderId", getOrderDetails);
-router.put("/orders/:orderId/accept", rolecheck(["logistics"]), acceptOrder);
 router.put(
   "/orders/:orderId/status",
   rolecheck(["logistics"]),

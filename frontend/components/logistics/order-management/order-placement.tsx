@@ -14,7 +14,6 @@ export default function OrdersPlacement() {
   const [offerMap, setOfferMap] = useState<OfferMap>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeModal, setActiveModal] = useState<{
     orderId: string;
@@ -56,19 +55,6 @@ export default function OrdersPlacement() {
   useEffect(() => {
     fetchOrders();
   }, []);
-
-  async function handleAcceptOrder(orderId: string) {
-    setAcceptingId(orderId);
-    try {
-      await orderAPI.acceptOrder(orderId);
-      toast.success("Order accepted! Check your History tab.");
-      setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept order");
-    } finally {
-      setAcceptingId(null);
-    }
-  }
 
   function handleOfferSuccess(offer: MyOffer) {
     if (!activeModal) return;
@@ -136,7 +122,8 @@ export default function OrdersPlacement() {
               Available Orders
             </h1>
             <p className="text-sm text-[#838383] mt-0.5">
-              Accept at the expected price, or bid at your preferred price
+              Submit a bid — the manufacturer chooses the winning logistics
+              partner
             </p>
           </div>
           <button
@@ -199,8 +186,6 @@ export default function OrdersPlacement() {
                 key={order._id}
                 order={order}
                 myOffer={offerMap[order.orderId] || null}
-                isAccepting={acceptingId === order.orderId}
-                onAccept={() => handleAcceptOrder(order.orderId)}
                 onBid={() =>
                   setActiveModal({
                     orderId: order.orderId,

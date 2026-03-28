@@ -93,9 +93,6 @@ export const orderAPI = {
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
-  acceptOrder: (orderId: string) =>
-    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
-
   updateStatus: (orderId: string, status: string) =>
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",
