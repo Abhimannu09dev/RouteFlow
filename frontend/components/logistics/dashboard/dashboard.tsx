@@ -195,7 +195,7 @@ export default function LogisticsDashboard() {
                 available
               </p>
               <p className="text-xs text-[#838383]">
-                Tap to browse and accept open orders
+                Tap to browse open orders and place bids
               </p>
             </div>
           </div>

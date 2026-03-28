@@ -13,7 +13,6 @@ import {
   RefreshCw,
   CheckCircle,
   Clock,
-  Loader2,
 } from "lucide-react";
 import InfoChip from "./info-chip";
 
@@ -46,8 +45,6 @@ export type MyOffer = {
 type Props = {
   order: Order;
   myOffer: MyOffer | null;
-  isAccepting: boolean;
-  onAccept: () => void;
   onBid: () => void;
 };
 
@@ -107,7 +104,7 @@ function ExpectedPriceDisplay({ price }: { price?: number | null }) {
       <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-xl">
         <div>
           <p className="text-xs text-green-700 font-medium">
-            Manufacturer&apos;s Expected Price
+            Manufacturer&apos;s budget hint
           </p>
           <p className="text-xl font-bold text-green-800">
             NPR {price.toLocaleString()}
@@ -123,7 +120,7 @@ function ExpectedPriceDisplay({ price }: { price?: number | null }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-[#F5F5F5] border border-[#E5E9EB] rounded-xl">
       <DollarSign size={13} className="text-[#838383]" />
-      <p className="text-xs text-[#838383]">No expected price — open bidding</p>
+      <p className="text-xs text-[#838383]">No budget hint — bid competitively</p>
     </div>
   );
 }
@@ -146,7 +143,7 @@ function MyBidSummary({ offer }: { offer: MyOffer }) {
       <div>
         <p className="text-xs font-semibold text-blue-700 flex items-center gap-1">
           <CheckCircle size={11} />
-          Your Current Bid
+          Your current bid
         </p>
         <p className="text-sm font-bold text-blue-800">
           NPR {offer.proposedPrice.toLocaleString()}
@@ -158,7 +155,7 @@ function MyBidSummary({ offer }: { offer: MyOffer }) {
       </div>
       <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full shrink-0">
         <Clock size={10} />
-        Pending
+        Awaiting manufacturer
       </span>
     </div>
   );
@@ -166,32 +163,13 @@ function MyBidSummary({ offer }: { offer: MyOffer }) {
 
 function ActionButtons({
   hasPendingBid,
-  isAccepting,
-  onAccept,
   onBid,
 }: {
   hasPendingBid: boolean;
-  isAccepting: boolean;
-  onAccept: () => void;
   onBid: () => void;
 }) {
   return (
     <div className="flex flex-col gap-2 pt-1 border-t border-[#F5F5F5]">
-      {!hasPendingBid && (
-        <button
-          onClick={onAccept}
-          disabled={isAccepting}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-xl transition disabled:opacity-60"
-        >
-          {isAccepting ? (
-            <Loader2 size={15} className="animate-spin" />
-          ) : (
-            <CheckCircle size={15} />
-          )}
-          {isAccepting ? "Accepting..." : "Accept Order"}
-        </button>
-      )}
-
       <button
         onClick={onBid}
         className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-primary text-primary hover:bg-primary hover:text-white text-sm font-medium rounded-xl transition"
@@ -199,32 +177,24 @@ function ActionButtons({
         {hasPendingBid ? (
           <>
             <RefreshCw size={15} />
-            Update Bid
+            Update bid
           </>
         ) : (
           <>
             <Send size={15} />
-            Place Bid Instead
+            Place bid
           </>
         )}
       </button>
 
-      {!hasPendingBid && (
-        <p className="text-[10px] text-center text-[#B0B7C3] leading-relaxed">
-          Accept to confirm at expected price · Bid to propose a different price
-        </p>
-      )}
+      <p className="text-[10px] text-center text-[#B0B7C3] leading-relaxed">
+        Only the manufacturer can award this order by accepting one bid
+      </p>
     </div>
   );
 }
 
-export default function OrderCard({
-  order,
-  myOffer,
-  isAccepting,
-  onAccept,
-  onBid,
-}: Props) {
+export default function OrderCard({ order, myOffer, onBid }: Props) {
   const hasPendingBid = !!(myOffer && myOffer.status === "pending");
 
   return (
@@ -243,12 +213,7 @@ export default function OrderCard({
 
       {hasPendingBid && <MyBidSummary offer={myOffer!} />}
 
-      <ActionButtons
-        hasPendingBid={hasPendingBid}
-        isAccepting={isAccepting}
-        onAccept={onAccept}
-        onBid={onBid}
-      />
+      <ActionButtons hasPendingBid={hasPendingBid} onBid={onBid} />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 const Order = require("../models/orderModel");
 const crypto = require("crypto");
-const PriceOffer = require("../models/priceOfferModel");
 const { notifyLogisticsNewOrder } = require("../websocket/orderEvents");
 
 async function createOrder(req, res) {
@@ -152,40 +151,6 @@ async function getOrderDetails(req, res) {
   }
 }
 
-async function acceptOrder(req, res) {
-  try {
-    const { orderId } = req.params;
-    const logisticsId = req.user.id;
-
-    const order = await Order.findOneAndUpdate(
-      { orderId, logistics: null, status: "pending" },
-      { logistics: logisticsId, status: "accepted", updatedAt: Date.now() },
-      { new: true },
-    )
-      .populate("manufacturer", "companyName email")
-      .populate("logistics", "companyName email");
-
-    if (!order) {
-      return res.status(409).json({
-        success: false,
-        message: "Order already taken or not found",
-      });
-    }
-    await PriceOffer.updateMany(
-      { order: order._id, status: "pending" },
-      { status: "rejected", updatedAt: new Date() },
-    );
-
-    return res.status(200).json({ success: true, order });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-}
-
 async function updateOrderStatus(req, res) {
   try {
     const { orderId } = req.params;
@@ -231,6 +196,5 @@ module.exports = {
   getAvailableOrders,
   getMyOrders,
   getOrderDetails,
-  acceptOrder,
   updateOrderStatus,
 };
