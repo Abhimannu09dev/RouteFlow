@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +8,7 @@ import {
   secondarySidebarItems,
 } from "@/components/logistics/common/nav-menu";
 import NotificationPanel from "@/components/shared/notification-panel";
+import ChatBadge from "@/components/shared/chat-badge";
 import { authAPI } from "@/lib/api";
 
 const Navbar = ({ pathname }: { pathname: string }) => {
@@ -45,11 +45,11 @@ const Navbar = ({ pathname }: { pathname: string }) => {
     <header className="bg-white border-b border-[#E5E9EB] p-3 lg:px-8 sticky top-0 z-10">
       <div className="flex flex-row justify-between items-center">
         <p className="text-lg font-medium text-[#252C32]">{title}</p>
-
         <div className="flex flex-row items-center gap-3 text-[#5B6871] select-none">
+          {/* Chat badge */}
+          <ChatBadge role="logistics" />
           {/* Real-time notification bell */}
           <NotificationPanel role="logistics" />
-
           {/* User dropdown */}
           <div className="relative" ref={userRef}>
             <button
@@ -58,7 +58,6 @@ const Navbar = ({ pathname }: { pathname: string }) => {
             >
               <User size={18} color="#5B6871" />
             </button>
-
             {showUser && (
               <div className="absolute top-10 right-0 w-52 bg-white border border-[#E5E9EB] rounded-2xl shadow-lg p-3 flex flex-col gap-1 text-sm z-50">
                 <Link
