@@ -4,6 +4,7 @@ const Message = require("../models/messageModel");
 const Order = require("../models/orderModel");
 
 let io = null;
+
 const userSocketMap = {};
 
 function initWebSocket(server) {
@@ -43,10 +44,9 @@ function initWebSocket(server) {
     const userId = socket.userId;
     userSocketMap[userId] = socket.id;
     console.log(`Socket connected: user ${userId} (${socket.userRole})`);
-
     socket.join(socket.userRole);
 
-    //  Chat: join a specific order's chat room
+    // Client emits: { orderId }
     socket.on("join_chat", async ({ orderId }) => {
       try {
         if (!orderId) return;
@@ -58,7 +58,7 @@ function initWebSocket(server) {
         if (!allowedStatuses.includes(order.status)) return;
 
         const manufacturerId = order.manufacturer?.toString();
-        const logisticsId = order.acceptedBy?.toString();
+        const logisticsId = order.logistics?.toString();
         const uid = userId.toString();
 
         // Only the two participants may join this chat room
@@ -77,7 +77,6 @@ function initWebSocket(server) {
       socket.leave(`chat_${orderId}`);
     });
 
-    //  Chat: send a text message
     socket.on("send_message", async ({ orderId, receiverId, content }) => {
       try {
         if (!orderId || !receiverId || !content?.trim()) return;
@@ -100,7 +99,7 @@ function initWebSocket(server) {
         }
 
         const manufacturerId = order.manufacturer?.toString();
-        const logisticsId = order.acceptedBy?.toString();
+        const logisticsId = order.logistics?.toString();
         const uid = userId.toString();
 
         if (uid !== manufacturerId && uid !== logisticsId) {
@@ -117,8 +116,6 @@ function initWebSocket(server) {
         });
 
         await message.populate("senderId", "companyName email role");
-
-        // Emit to everyone in the order's chat room (both participants)
         io.to(`chat_${orderId}`).emit("message_received", message);
       } catch (err) {
         console.error("send_message socket error:", err);
@@ -136,13 +133,13 @@ function initWebSocket(server) {
         );
         // Notify the sender their messages were read
         const order = await Order.findById(orderId).select(
-          "manufacturer acceptedBy",
+          "manufacturer logistics",
         );
         if (!order) return;
         const uid = userId.toString();
         const otherId =
           order.manufacturer?.toString() === uid
-            ? order.acceptedBy?.toString()
+            ? order.logistics?.toString()
             : order.manufacturer?.toString();
         if (otherId) {
           const otherSocketId = userSocketMap[otherId];
@@ -166,7 +163,7 @@ function initWebSocket(server) {
   return io;
 }
 
-// Notification helpers (existing — unchanged)
+//  Notification helpers
 function notifyUser(userId, notification) {
   if (!io) return;
   const socketId = userSocketMap[userId?.toString()];
@@ -180,8 +177,6 @@ function notifyRole(role, notification) {
   io.to(role).emit("notification", notification);
 }
 
-// Chat helper chat_closed to both participants of an order
-// Called from orderEvents.js when an order is marked delivered
 function closeChatRoom(orderId) {
   if (!io) return;
   io.to(`chat_${orderId}`).emit("chat_closed", {

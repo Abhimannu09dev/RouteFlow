@@ -2,7 +2,10 @@ const path = require("path");
 const Message = require("../models/messageModel");
 const Order = require("../models/orderModel");
 
+// Statuses where chat is accessible
 const CHAT_ALLOWED_STATUSES = ["accepted", "in transit", "delivered"];
+
+// Verify the requesting user is a participant of the order and chat is accessible
 async function resolveOrderForChat(orderId, userId) {
   const order = await Order.findById(orderId);
   if (!order) {
@@ -18,7 +21,7 @@ async function resolveOrderForChat(orderId, userId) {
   }
 
   const manufacturerId = order.manufacturer?.toString();
-  const logisticsId = order.acceptedBy?.toString();
+  const logisticsId = order.logistics?.toString();
   const uid = userId.toString();
 
   if (uid !== manufacturerId && uid !== logisticsId) {
@@ -33,17 +36,17 @@ async function resolveOrderForChat(orderId, userId) {
   };
 }
 
-// List all chat-eligible orders for the logged-in user, with last message + unread count.
+// List all chat-eligible orders for the logged-in user, with last message, unread count.
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const orders = await Order.find({
       status: { $in: CHAT_ALLOWED_STATUSES },
-      $or: [{ manufacturer: userId }, { acceptedBy: userId }],
+      $or: [{ manufacturer: userId }, { logistics: userId }],
     })
       .populate("manufacturer", "companyName email")
-      .populate("acceptedBy", "companyName email")
+      .populate("logistics", "companyName email")
       .sort({ updatedAt: -1 });
 
     const conversations = await Promise.all(
@@ -61,16 +64,15 @@ const getConversations = async (req, res) => {
         const isManufacturer =
           order.manufacturer?._id?.toString() === userId.toString();
         const otherParty = isManufacturer
-          ? order.acceptedBy
+          ? order.logistics
           : order.manufacturer;
 
         return {
           orderId: order._id,
           // Use cargoType as title — adjust field name if yours differs
           orderTitle:
-            order.cargoType ||
-            order.title ||
-            `Order #${order._id.toString().slice(-6)}`,
+            order.productDetails ||
+            `Order #${order.orderId || order._id.toString().slice(-6)}`,
           orderStatus: order.status,
           isClosed: order.status === "delivered",
           otherParty,
@@ -122,7 +124,7 @@ const getMessages = async (req, res) => {
       orderStatus: order.status,
       participants: {
         manufacturer: order.manufacturer,
-        logistics: order.acceptedBy,
+        logistics: order.logistics,
       },
     });
   } catch (err) {
@@ -133,6 +135,7 @@ const getMessages = async (req, res) => {
   }
 };
 
+// Plain text messages should go through Socket.io for real-time delivery.
 const sendMessage = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -167,10 +170,12 @@ const sendMessage = async (req, res) => {
     }
 
     if (!content?.trim() && !fileUrl) {
-      return res.status(400).json({
-        success: false,
-        message: "Message content or file is required",
-      });
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Message content or file is required",
+        });
     }
 
     const message = await Message.create({
@@ -185,6 +190,7 @@ const sendMessage = async (req, res) => {
 
     await message.populate("senderId", "companyName email role");
 
+    // Emit to the order's chat room via Socket.io
     const { getIO } = require("../websocket");
     const io = getIO();
     if (io) {

@@ -6,7 +6,7 @@ const {
   sendMessage,
   getUnreadCount,
 } = require("../controllers/chatController");
-const upload = require("../middleware/upload");
+const { upload } = require("../middleware/upload");
 
 router.get("/conversations", getConversations);
 router.get("/unread-count", getUnreadCount);

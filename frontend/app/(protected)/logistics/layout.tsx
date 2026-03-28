@@ -1,5 +1,4 @@
 "use client";
-
 import Navbar from "@/components/logistics/common/Navbar";
 import DesktopSidebar from "@/components/logistics/common/DesktopSidebar";
 import MobileSidebar from "@/components/logistics/common/MobileSidebar";
@@ -12,10 +11,6 @@ export default function LogisticsLayout({
   children: React.ReactNode;
 }>) {
   const pathname = usePathname();
-
-  // Verifies the session cookie and checks role === "logistics"
-  // Automatically redirects to /auth if not logged in
-  // Automatically redirects to /manufacturer/dashboard if logged in as manufacturer
   const { loading, error } = useAuth("logistics");
 
   if (loading) {
@@ -43,8 +38,13 @@ export default function LogisticsLayout({
       <MobileSidebar pathname={pathname} />
       <div className="lg:col-span-4 xl:col-span-5 w-full h-[100dvh] overflow-hidden flex flex-col">
         <Navbar pathname={pathname} />
-        <div className="w-full h-[100dvh] bg-white overflow-y-auto flex-1">
-          <div className="min-h-[100dvh] p-2 md:p-4 lg:p-5">{children}</div>
+        {/*
+          KEY FIX: flex-1 + min-h-0 makes this div take exactly the remaining
+          height after the navbar, allowing children to use h-full correctly.
+          Previously min-h-[100dvh] meant h-full in children resolved to 0.
+        */}
+        <div className="flex-1 min-h-0 overflow-y-auto bg-white">
+          <div className="min-h-full p-2 md:p-4 lg:p-5">{children}</div>
         </div>
       </div>
     </div>

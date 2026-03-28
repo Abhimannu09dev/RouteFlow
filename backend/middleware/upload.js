@@ -52,4 +52,4 @@ const uploadProfileFiles = upload.fields([
   { name: "documents", maxCount: 5 },
 ]);
 
-module.exports = { uploadProfileFiles };
+module.exports = { upload, uploadProfileFiles };

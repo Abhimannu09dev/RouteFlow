@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -33,10 +32,9 @@ export function useAuth(
       try {
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
           method: "GET",
-          credentials: "include", // sends the HTTP-Only cookie automatically
+          credentials: "include",
         });
 
-        // Not logged in at all — send to auth page
         if (response.status === 401) {
           router.replace("/auth");
           return;
@@ -48,7 +46,6 @@ export function useAuth(
 
         const user: AuthUser = await response.json();
 
-        // Logged in but wrong role — redirect to their correct dashboard
         if (requiredRole && user.role !== requiredRole) {
           const correctDashboard =
             user.role === "manufacturer"
@@ -59,7 +56,7 @@ export function useAuth(
         }
 
         setState({ user, loading: false, error: null });
-      } catch (err) {
+      } catch {
         setState({
           user: null,
           loading: false,
@@ -70,7 +67,10 @@ export function useAuth(
     }
 
     verifySession();
-  }, [requiredRole, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requiredRole]); // ← router intentionally excluded: it's stable but including it
+  //   causes repeated re-runs that unmount/remount children,
+  //   resetting their state on every render cycle.
 
   return state;
 }
