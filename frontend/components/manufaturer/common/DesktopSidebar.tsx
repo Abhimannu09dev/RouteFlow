@@ -1,79 +1,79 @@
 "use client";
-
-import { LogOut, Truck } from "lucide-react";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
+import { authAPI } from "@/lib/api";
+import "@/lib/i18n";
 
 export default function DesktopSidebar({ pathname }: { pathname: string }) {
+  const router = useRouter();
+  const { t } = useTranslation();
+
+  async function handleLogout() {
+    await authAPI.logout();
+    router.replace("/auth?action=sign-in");
+  }
+
   return (
-    <nav className="hidden lg:flex w-full h-full overflow-y-auto bg-white py-6 px-4 flex-col border-r border-slate-200 z-10">
-      {/* Logo Section */}
-      <div className="flex items-center mb-8 gap-3 px-2">
-        <div className="p-2 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-          <Truck className="w-6 h-6" />
+    <aside className="hidden lg:flex w-full h-full overflow-y-auto bg-[#F6F8F9] py-4 px-4 flex-col border-r border-[#E5E9EB]">
+      {/* Logo */}
+      <div className="flex items-center gap-2 mb-6 px-2">
+        <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center shrink-0">
+          <span className="text-white font-bold text-sm">R</span>
         </div>
-        <p className="text-xl font-bold tracking-tight text-slate-900">
-          RouteFlow
-        </p>
+        <span className="font-semibold text-[#252C32] text-sm">RouteFlow</span>
       </div>
 
-      {/* Main Items */}
-      <div className="flex flex-col gap-1.5">
+      {/* Primary nav */}
+      <nav className="flex flex-col gap-1 flex-1">
         {primarySidebarItems.map((item) => {
           const isActive = pathname.includes(item.href);
           return (
             <Link
-              key={item.id}
+              key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 text-[14px] ${
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition ${
                 isActive
-                  ? "bg-primary/10 text-primary font-semibold" // The premium "pill" look
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                  ? "bg-white text-teal-600 font-semibold shadow-sm"
+                  : "text-[#5B6871] hover:bg-white hover:text-[#252C32]"
               }`}
             >
-              {item.icon && (
-                <item.icon
-                  className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "text-slate-400"}`}
-                />
-              )}
-              {item.label}
+              <item.icon size={17} />
+              {t(item.labelKey)}
             </Link>
           );
         })}
-      </div>
+      </nav>
 
-      {/* Secondary Items - Pushed to bottom using mt-auto */}
-      <div className="flex flex-col space-y-1 mt-auto pt-6 border-t border-slate-100">
+      {/* Secondary nav */}
+      <div className="flex flex-col gap-1 mt-4 border-t border-[#E5E9EB] pt-4">
         {secondarySidebarItems.map((item) => {
           const isActive = pathname.includes(item.href);
           return (
             <Link
-              key={item.id}
+              key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 py-2.5 px-3 rounded-xl transition-all duration-200 text-[14px] ${
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition ${
                 isActive
-                  ? "bg-primary/10 text-primary font-semibold"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                  ? "bg-white text-teal-600 font-semibold shadow-sm"
+                  : "text-[#5B6871] hover:bg-white hover:text-[#252C32]"
               }`}
             >
-              {item.icon && (
-                <item.icon
-                  className={`w-5 h-5 transition-colors ${isActive ? "text-primary" : "text-slate-400"}`}
-                />
-              )}
-              {item.label}
+              <item.icon size={17} />
+              {t(item.labelKey)}
             </Link>
           );
         })}
-
-        <Link
-          href={"/auth"}
-          className="flex items-center gap-3 py-2.5 px-3 mt-2 rounded-xl transition-all duration-200 text-[14px] text-slate-500 font-medium hover:bg-red-50 hover:text-red-600"
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-[#5B6871] hover:bg-red-50 hover:text-red-500 transition text-left"
         >
-          <LogOut className="w-5 h-5 text-slate-400 group-hover:text-red-500 transition-colors" />
-          Logout
-        </Link>
+          <LogOut size={17} />
+          {t("nav.logout")}
+        </button>
       </div>
-    </nav>
+    </aside>
   );
 }

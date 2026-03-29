@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   primarySidebarItems,
   secondarySidebarItems,
@@ -10,22 +11,18 @@ import {
 import NotificationPanel from "@/components/shared/notification-panel";
 import ChatBadge from "@/components/shared/chat-badge";
 import { authAPI } from "@/lib/api";
+import "@/lib/i18n";
 
 const Navbar = ({ pathname }: { pathname: string }) => {
   const router = useRouter();
+  const { t } = useTranslation();
   const userRef = useRef<HTMLDivElement>(null);
   const [showUser, setShowUser] = useState(false);
 
-  // Resolve page title from nav-menu
-  let title =
-    primarySidebarItems.find((item) => pathname.includes(item.href))?.label ||
-    "";
-  if (!title)
-    title =
-      secondarySidebarItems.find((item) => pathname.includes(item.href))
-        ?.label || "";
+  const allItems = [...primarySidebarItems, ...secondarySidebarItems];
+  const activeItem = allItems.find((item) => pathname.includes(item.href));
+  const title = activeItem ? t(activeItem.labelKey) : "";
 
-  // Close user dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (userRef.current && !userRef.current.contains(event.target as Node)) {
@@ -46,11 +43,8 @@ const Navbar = ({ pathname }: { pathname: string }) => {
       <div className="flex flex-row justify-between items-center">
         <p className="text-lg font-medium text-[#252C32]">{title}</p>
         <div className="flex flex-row items-center gap-3 text-[#5B6871] select-none">
-          {/* Chat badge */}
           <ChatBadge role="logistics" />
-          {/* Real-time notification bell */}
           <NotificationPanel role="logistics" />
-          {/* User dropdown */}
           <div className="relative" ref={userRef}>
             <button
               onClick={() => setShowUser((prev) => !prev)}
@@ -65,21 +59,21 @@ const Navbar = ({ pathname }: { pathname: string }) => {
                   onClick={() => setShowUser(false)}
                   className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
                 >
-                  Profile
+                  {t("nav.profile")}
                 </Link>
                 <Link
                   href="/logistics/settings"
                   onClick={() => setShowUser(false)}
                   className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
                 >
-                  Settings
+                  {t("nav.settings")}
                 </Link>
                 <hr className="border-[#E5E9EB] my-1" />
                 <button
                   onClick={handleLogout}
                   className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-500 transition text-left"
                 >
-                  Logout
+                  {t("nav.logout")}
                 </button>
               </div>
             )}
