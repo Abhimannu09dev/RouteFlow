@@ -16,7 +16,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+//  Auth
 
 export const authAPI = {
   register: (
@@ -65,7 +65,7 @@ export const authAPI = {
   me: () => apiFetch("/auth/me"),
 };
 
-// ── Orders ────────────────────────────────────────────────────────────────────
+//  Orders
 
 export type CreateOrderPayload = {
   productDetails: string;
@@ -93,6 +93,9 @@ export const orderAPI = {
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
+  acceptOrder: (orderId: string) =>
+    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
+
   updateStatus: (orderId: string, status: string) =>
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",
@@ -100,7 +103,7 @@ export const orderAPI = {
     }),
 };
 
-// ── Price Offers ──────────────────────────────────────────────────────────────
+//  Price Offers
 
 export type SubmitOfferPayload = {
   proposedPrice: number;
@@ -138,7 +141,7 @@ export const priceOfferAPI = {
     }),
 };
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+//  Chat
 
 export type Message = {
   _id: string;
@@ -211,4 +214,45 @@ export const chatAPI = {
       body: formData,
     }).then((r) => r.json());
   },
+};
+
+//  Settings
+
+export type NotificationPreferences = {
+  emailNotifications: boolean;
+  orderStatusUpdates: boolean;
+  bidUpdates: boolean;
+  newOrderAlerts: boolean;
+  chatMessages: boolean;
+};
+
+export const settingsAPI = {
+  getNotificationPreferences: (): Promise<{
+    success: boolean;
+    preferences: NotificationPreferences;
+  }> => apiFetch("/settings/notifications"),
+
+  updateNotificationPreferences: (
+    prefs: NotificationPreferences,
+  ): Promise<{ success: boolean; preferences: NotificationPreferences }> =>
+    apiFetch("/settings/notifications", {
+      method: "PUT",
+      body: JSON.stringify(prefs),
+    }),
+
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) =>
+    apiFetch("/settings/change-password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    }),
+
+  deactivateAccount: (password: string) =>
+    apiFetch("/settings/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
 };

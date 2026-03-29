@@ -7,6 +7,7 @@ const adminRoutes = require("./adminRoutes");
 const priceOfferRoutes = require("./priceOfferRoutes");
 const notificationRoutes = require("./notificationRoutes");
 const chatRoutes = require("./chatRoutes");
+const settingsRoutes = require("./settingsRoutes");
 const { auth } = require("../middleware/auth");
 
 router.use("/auth", authRoutes);
@@ -16,5 +17,6 @@ router.use("/profile", auth, profileRoutes);
 router.use("/admin", auth, adminRoutes);
 router.use("/notifications", auth, notificationRoutes);
 router.use("/chat", auth, chatRoutes);
+router.use("/settings", auth, settingsRoutes);
 
 module.exports = router;
