@@ -9,12 +9,15 @@ import {
   CheckCircle,
   Loader2,
   AlertTriangle,
+  Languages,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import { settingsAPI, type NotificationPreferences } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import "@/lib/i18n";
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+//  Sub-components 
 
 function SectionCard({
   title,
@@ -76,7 +79,7 @@ function ToggleRow({
   );
 }
 
-// ─── Change Password Section ──────────────────────────────────────────────────
+//  Change Password Section 
 
 function ChangePasswordSection() {
   const [form, setForm] = useState({
@@ -198,7 +201,7 @@ function ChangePasswordSection() {
   );
 }
 
-// ─── Notification Preferences Section ────────────────────────────────────────
+//  Notification Preferences Section 
 
 function NotificationSection() {
   const [prefs, setPrefs] = useState<NotificationPreferences>({
@@ -314,7 +317,7 @@ function NotificationSection() {
   );
 }
 
-// ─── Account Deactivation Section ────────────────────────────────────────────
+//  Account Deactivation Section 
 
 function DeactivateSection({ role }: { role: "manufacturer" | "logistics" }) {
   const router = useRouter();
@@ -422,21 +425,75 @@ function DeactivateSection({ role }: { role: "manufacturer" | "logistics" }) {
   );
 }
 
-// ─── Main Settings Page ───────────────────────────────────────────────────────
+//  Language Section 
+
+function LanguageSection() {
+  const { t, i18n } = useTranslation();
+  const [current, setCurrent] = useState(
+    i18n.language?.startsWith("ne") ? "ne" : "en",
+  );
+
+  function handleChange(lang: "en" | "ne") {
+    setCurrent(lang);
+    i18n.changeLanguage(lang);
+    toast.success(t("settings.languageSaved"));
+  }
+
+  return (
+    <SectionCard
+      title={t("settings.language")}
+      description={t("settings.languageDesc")}
+      icon={Languages}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-[#5B6871] mr-2">
+          {t("settings.languageEnglish")}
+        </span>
+        {/* Toggle */}
+        <button
+          onClick={() => handleChange(current === "en" ? "ne" : "en")}
+          className={`relative w-14 h-7 rounded-full transition-colors ${
+            current === "ne" ? "bg-teal-500" : "bg-[#DDE2E6]"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform text-[10px] font-bold flex items-center justify-center text-[#252C32] ${
+              current === "ne" ? "translate-x-7" : "translate-x-0"
+            }`}
+          >
+            {current === "ne" ? "ने" : "EN"}
+          </span>
+        </button>
+        <span className="text-sm text-[#5B6871]">नेपाली</span>
+      </div>
+      <p className="text-xs text-[#9AA6AC] mt-3">
+        {current === "ne"
+          ? "हाल चयन गरिएको: नेपाली"
+          : "Currently selected: English"}
+      </p>
+    </SectionCard>
+  );
+}
+
+//  Main Settings Page 
 
 interface SettingsPageProps {
   role: "manufacturer" | "logistics";
 }
 
 export default function SettingsPage({ role }: SettingsPageProps) {
+  const { t } = useTranslation();
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5 py-2">
       <div>
-        <h1 className="text-lg font-semibold text-[#252C32]">Settings</h1>
+        <h1 className="text-lg font-semibold text-[#252C32]">
+          {t("settings.title")}
+        </h1>
         <p className="text-sm text-[#9AA6AC] mt-0.5">
-          Manage your account settings and preferences
+          {t("settings.subtitle")}
         </p>
       </div>
+      <LanguageSection />
       <ChangePasswordSection />
       <NotificationSection />
       <DeactivateSection role={role} />
