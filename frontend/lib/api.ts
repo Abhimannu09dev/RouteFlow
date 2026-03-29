@@ -16,7 +16,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+//  Auth
 
 export const authAPI = {
   register: (
@@ -65,7 +65,7 @@ export const authAPI = {
   me: () => apiFetch("/auth/me"),
 };
 
-// ── Orders ────────────────────────────────────────────────────────────────────
+//  Orders
 
 export type CreateOrderPayload = {
   productDetails: string;
@@ -93,6 +93,9 @@ export const orderAPI = {
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
+  acceptOrder: (orderId: string) =>
+    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
+
   updateStatus: (orderId: string, status: string) =>
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",
@@ -100,7 +103,7 @@ export const orderAPI = {
     }),
 };
 
-// ── Price Offers ──────────────────────────────────────────────────────────────
+//  Price Offers
 
 export type SubmitOfferPayload = {
   proposedPrice: number;
@@ -138,7 +141,7 @@ export const priceOfferAPI = {
     }),
 };
 
-// ── Chat ──────────────────────────────────────────────────────────────────────
+//  Chat
 
 export type Message = {
   _id: string;
@@ -211,4 +214,104 @@ export const chatAPI = {
       body: formData,
     }).then((r) => r.json());
   },
+};
+
+//  Settings
+
+export type NotificationPreferences = {
+  emailNotifications: boolean;
+  orderStatusUpdates: boolean;
+  bidUpdates: boolean;
+  newOrderAlerts: boolean;
+  chatMessages: boolean;
+};
+
+export const settingsAPI = {
+  getNotificationPreferences: (): Promise<{
+    success: boolean;
+    preferences: NotificationPreferences;
+  }> => apiFetch("/settings/notifications"),
+
+  updateNotificationPreferences: (
+    prefs: NotificationPreferences,
+  ): Promise<{ success: boolean; preferences: NotificationPreferences }> =>
+    apiFetch("/settings/notifications", {
+      method: "PUT",
+      body: JSON.stringify(prefs),
+    }),
+
+  changePassword: (
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword: string,
+  ) =>
+    apiFetch("/settings/change-password", {
+      method: "PUT",
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    }),
+
+  deactivateAccount: (password: string) =>
+    apiFetch("/settings/account", {
+      method: "DELETE",
+      body: JSON.stringify({ password }),
+    }),
+};
+
+//  Support Tickets
+
+export type SupportTicket = {
+  _id: string;
+  userId: string;
+  subject: string;
+  message: string;
+  category: "general" | "technical" | "billing";
+  status: "open" | "in-progress" | "resolved";
+  adminReply: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const supportAPI = {
+  createTicket: (
+    subject: string,
+    message: string,
+    category: string,
+  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+    apiFetch("/support", {
+      method: "POST",
+      body: JSON.stringify({ subject, message, category }),
+    }),
+
+  getMyTickets: (): Promise<{ success: boolean; tickets: SupportTicket[] }> =>
+    apiFetch("/support/my-tickets"),
+};
+
+//  Admin Support Tickets
+
+export const adminSupportAPI = {
+  getAllTickets: (filters?: {
+    status?: string;
+    category?: string;
+  }): Promise<{
+    success: boolean;
+    tickets: (SupportTicket & {
+      userId: { _id: string; companyName: string; email: string; role: string };
+    })[];
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.category) params.set("category", filters.category);
+    const qs = params.toString();
+    return apiFetch(`/admin/support-tickets${qs ? `?${qs}` : ""}`);
+  },
+
+  updateTicket: (
+    ticketId: string,
+    updates: { status?: string; adminReply?: string },
+  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+    apiFetch(`/admin/support-tickets/${ticketId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    }),
 };

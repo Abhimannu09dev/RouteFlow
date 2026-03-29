@@ -30,6 +30,9 @@ const secondaryItems = [
   },
 ];
 
+// All nav items combined for title resolution
+const allNavItems = [...sidebarItems, ...secondaryItems];
+
 export default function AdminLayout({
   children,
 }: {
@@ -130,10 +133,10 @@ export default function AdminLayout({
 
       {/* Main content */}
       <div className="lg:col-span-4 xl:col-span-5 w-full h-[100dvh] overflow-hidden flex flex-col">
-        {/* Top bar */}
+        {/* Top bar — resolves title from all nav items including secondary */}
         <header className="bg-white border-b border-[#E5E9EB] px-6 py-3 flex items-center justify-between shrink-0">
           <p className="text-sm font-medium text-[#252C32]">
-            {sidebarItems.find((i) => pathname.includes(i.href))?.label ||
+            {allNavItems.find((i) => pathname.includes(i.href))?.label ||
               "Admin"}
           </p>
           <div className="flex items-center gap-2">
