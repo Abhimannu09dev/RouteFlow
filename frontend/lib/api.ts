@@ -256,3 +256,62 @@ export const settingsAPI = {
       body: JSON.stringify({ password }),
     }),
 };
+
+//  Support Tickets
+
+export type SupportTicket = {
+  _id: string;
+  userId: string;
+  subject: string;
+  message: string;
+  category: "general" | "technical" | "billing";
+  status: "open" | "in-progress" | "resolved";
+  adminReply: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const supportAPI = {
+  createTicket: (
+    subject: string,
+    message: string,
+    category: string,
+  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+    apiFetch("/support", {
+      method: "POST",
+      body: JSON.stringify({ subject, message, category }),
+    }),
+
+  getMyTickets: (): Promise<{ success: boolean; tickets: SupportTicket[] }> =>
+    apiFetch("/support/my-tickets"),
+};
+
+//  Admin Support Tickets
+
+export const adminSupportAPI = {
+  getAllTickets: (filters?: {
+    status?: string;
+    category?: string;
+  }): Promise<{
+    success: boolean;
+    tickets: (SupportTicket & {
+      userId: { _id: string; companyName: string; email: string; role: string };
+    })[];
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.category) params.set("category", filters.category);
+    const qs = params.toString();
+    return apiFetch(`/admin/support-tickets${qs ? `?${qs}` : ""}`);
+  },
+
+  updateTicket: (
+    ticketId: string,
+    updates: { status?: string; adminReply?: string },
+  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+    apiFetch(`/admin/support-tickets/${ticketId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates),
+    }),
+};
