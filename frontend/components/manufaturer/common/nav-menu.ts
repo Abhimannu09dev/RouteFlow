@@ -1,71 +1,69 @@
 import {
-  CalendarArrowUp,
-  FileClock,
-  HeartHandshake,
-  HouseIcon,
-  BadgeDollarSign,
-  Settings,
-  MessageCircleMore,
-  User,
+  LayoutDashboard,
+  Package,
   Gavel,
+  History,
+  CreditCard,
+  MessageSquare,
 } from "lucide-react";
+import { User, Settings, HelpCircle } from "lucide-react";
 
 export const primarySidebarItems = [
   {
-    id: "dashboard",
+    labelKey: "nav.dashboard",
     label: "Dashboard",
-    icon: HouseIcon,
     href: "/manufacturer/dashboard",
+    icon: LayoutDashboard,
   },
   {
-    id: "chats",
+    labelKey: "nav.chats",
     label: "Chats",
-    icon: MessageCircleMore,
     href: "/manufacturer/chats",
+    icon: MessageSquare,
   },
   {
-    id: "order-placement",
+    labelKey: "nav.ordersPlacement",
     label: "Orders Placement",
-    icon: CalendarArrowUp,
     href: "/manufacturer/order-management",
+    icon: Package,
   },
   {
-    id: "bids",
+    labelKey: "nav.bids",
     label: "Bids",
-    icon: Gavel,
     href: "/manufacturer/bids",
+    icon: Gavel,
   },
   {
-    id: "history",
+    labelKey: "nav.history",
     label: "History",
-    icon: FileClock,
     href: "/manufacturer/history",
+    icon: History,
   },
   {
-    id: "payments",
+    labelKey: "nav.payments",
     label: "Payments",
-    icon: BadgeDollarSign,
     href: "/manufacturer/payments",
-  },
-  {
-    id: "profile",
-    label: "Profile",
-    icon: User,
-    href: "/manufacturer/profile",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    href: "/manufacturer/settings",
+    icon: CreditCard,
   },
 ];
 
 export const secondarySidebarItems = [
   {
-    id: "help-support",
+    labelKey: "nav.helpSupport",
     label: "Help & Support",
-    icon: HeartHandshake,
-    href: "/manufacturer/support",
+    href: "/manufacturer/help",
+    icon: HelpCircle,
+  },
+  {
+    labelKey: "nav.profile",
+    label: "Profile",
+    href: "/manufacturer/profile",
+    icon: User,
+  },
+  {
+    labelKey: "nav.settings",
+    label: "Settings",
+    href: "/manufacturer/settings",
+    icon: Settings,
   },
 ];

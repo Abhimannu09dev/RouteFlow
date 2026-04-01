@@ -1,71 +1,69 @@
 import {
-  CalendarArrowUp,
-  FileClock,
-  HeartHandshake,
-  HouseIcon,
-  BadgeDollarSign,
-  Settings,
-  MessageCircleMore,
-  User,
+  LayoutDashboard,
+  Truck,
   Gavel,
+  History,
+  CreditCard,
+  MessageSquare,
 } from "lucide-react";
+import { User, Settings, HelpCircle } from "lucide-react";
 
 export const primarySidebarItems = [
   {
-    id: "dashboard",
+    labelKey: "nav.dashboard",
     label: "Dashboard",
-    icon: HouseIcon,
     href: "/logistics/dashboard",
+    icon: LayoutDashboard,
   },
   {
-    id: "chats",
+    labelKey: "nav.chats",
     label: "Chats",
-    icon: MessageCircleMore,
     href: "/logistics/chats",
+    icon: MessageSquare,
   },
   {
-    id: "orders-placement",
+    labelKey: "nav.ordersPlacement",
     label: "Orders Placement",
-    icon: CalendarArrowUp,
     href: "/logistics/orders-placement",
+    icon: Truck,
   },
   {
-    id: "bids",
-    label: "Bids",
-    icon: Gavel,
+    labelKey: "nav.bids",
+    label: "My Bids",
     href: "/logistics/bids",
+    icon: Gavel,
   },
   {
-    id: "history",
+    labelKey: "nav.history",
     label: "History",
-    icon: FileClock,
     href: "/logistics/history",
+    icon: History,
   },
   {
-    id: "payments",
+    labelKey: "nav.payments",
     label: "Payments",
-    icon: BadgeDollarSign,
     href: "/logistics/payments",
-  },
-  {
-    id: "profile",
-    label: "Profile",
-    icon: User,
-    href: "/logistics/profile",
-  },
-  {
-    id: "settings",
-    label: "Settings",
-    icon: Settings,
-    href: "/logistics/settings",
+    icon: CreditCard,
   },
 ];
 
 export const secondarySidebarItems = [
   {
-    id: "help-support",
+    labelKey: "nav.helpSupport",
     label: "Help & Support",
-    icon: HeartHandshake,
-    href: "/logistics/support",
+    href: "/logistics/help",
+    icon: HelpCircle,
+  },
+  {
+    labelKey: "nav.profile",
+    label: "Profile",
+    href: "/logistics/profile",
+    icon: User,
+  },
+  {
+    labelKey: "nav.settings",
+    label: "Settings",
+    href: "/logistics/settings",
+    icon: Settings,
   },
 ];

@@ -1,8 +1,12 @@
 import CreatePassword from "@/components/auth/CreatePassword";
-import React from "react";
+import { Suspense } from "react";
 
 const UpdatePassword = () => {
-  return <CreatePassword />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreatePassword />
+    </Suspense>
+  );
 };
 
 export default UpdatePassword;

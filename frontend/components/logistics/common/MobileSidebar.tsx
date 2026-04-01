@@ -49,7 +49,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
           <div className="flex flex-col gap-1.5">
             {primarySidebarItems.map((item) => (
               <Link
-                key={item.id}
+                key={item.href}
                 href={item.href}
                 className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm ${
                   pathname.includes(item.href)
@@ -67,7 +67,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
           <div className="flex flex-col space-y-2 mt-7">
             {secondarySidebarItems.map((item) => (
               <Link
-                key={item.id}
+                key={item.href}
                 href={item.href}
                 className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm ${
                   pathname.includes(item.href)
