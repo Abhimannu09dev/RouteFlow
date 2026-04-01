@@ -315,3 +315,66 @@ export const adminSupportAPI = {
       body: JSON.stringify(updates),
     }),
 };
+
+export type Payment = {
+  _id: string;
+  orderId: string;
+  payerId: string;
+  receiverId: string;
+  amount: number;
+  gateway: "khalti" | "esewa";
+  status: "pending" | "completed" | "failed";
+  pidx: string | null;
+  refId: string | null;
+  transactionId: string | null;
+  createdAt: string;
+};
+
+export const paymentAPI = {
+  getPaymentStatus: (
+    orderId: string,
+  ): Promise<{ success: boolean; payment: Payment | null }> =>
+    apiFetch(`/payment/status/${orderId}`),
+
+  initiateKhalti: (
+    orderId: string,
+  ): Promise<{
+    success: boolean;
+    paymentUrl: string;
+    pidx: string;
+    paymentId: string;
+  }> =>
+    apiFetch("/payment/khalti/initiate", {
+      method: "POST",
+      body: JSON.stringify({ orderId }),
+    }),
+
+  verifyKhalti: (
+    pidx: string,
+    paymentId: string,
+  ): Promise<{ success: boolean; status: string; transactionId: string }> =>
+    apiFetch(`/payment/khalti/verify?pidx=${pidx}&paymentId=${paymentId}`),
+
+  initiateEsewa: (
+    orderId: string,
+  ): Promise<{
+    success: boolean;
+    paymentId: string;
+    formData: Record<string, string>;
+    esewaUrl: string;
+  }> =>
+    apiFetch("/payment/esewa/initiate", {
+      method: "POST",
+      body: JSON.stringify({ orderId }),
+    }),
+
+  verifyEsewa: (
+    data: string,
+    paymentId: string,
+  ): Promise<{
+    success: boolean;
+    status: string;
+    transactionId: string;
+    refId: string;
+  }> => apiFetch(`/payment/esewa/verify?data=${data}&paymentId=${paymentId}`),
+};
