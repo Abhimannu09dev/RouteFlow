@@ -1,13 +1,13 @@
-const PriceOffer = require("../models/priceOfferModel");
-const Order = require("../models/orderModel");
-const {
+import PriceOffer from "../models/priceOfferModel.js";
+import Order from "../models/orderModel.js";
+import {
   notifyManufacturerNewBid,
   notifyLogisticsBidAccepted,
   notifyLogisticsBidRejected,
-} = require("../websocket/orderEvents");
+} from "../websocket/orderEvents.js";
 
 //  Submit a price offer (logistics only)
-async function submitOffer(req, res) {
+const submitOffer = async (req, res) => {
   try {
     if (req.user.role !== "logistics") {
       return res.status(403).json({
@@ -101,10 +101,10 @@ async function submitOffer(req, res) {
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
   }
-}
+};
 
 //  Get offers for an order
-async function getOffers(req, res) {
+const getOffers = async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -154,10 +154,10 @@ async function getOffers(req, res) {
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
   }
-}
+};
 
 //  Update own offer (logistics only)
-async function updateOffer(req, res) {
+const updateOffer = async (req, res) => {
   try {
     if (req.user.role !== "logistics") {
       return res.status(403).json({
@@ -203,10 +203,10 @@ async function updateOffer(req, res) {
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
   }
-}
+};
 
 //  Withdraw own offer (logistics only)
-async function withdrawOffer(req, res) {
+const withdrawOffer = async (req, res) => {
   try {
     if (req.user.role !== "logistics") {
       return res.status(403).json({
@@ -245,10 +245,10 @@ async function withdrawOffer(req, res) {
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
   }
-}
+};
 
 //  Accept an offer (manufacturer only)
-async function acceptOffer(req, res) {
+const acceptOffer = async (req, res) => {
   try {
     if (req.user.role !== "manufacturer") {
       return res.status(403).json({
@@ -339,12 +339,6 @@ async function acceptOffer(req, res) {
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
   }
-}
-
-module.exports = {
-  submitOffer,
-  getOffers,
-  updateOffer,
-  withdrawOffer,
-  acceptOffer,
 };
+
+export { submitOffer, getOffers, updateOffer, withdrawOffer, acceptOffer };

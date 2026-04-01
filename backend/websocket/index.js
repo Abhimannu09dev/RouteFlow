@@ -1,7 +1,7 @@
-const { Server } = require("socket.io");
-const jwt = require("jsonwebtoken");
-const Message = require("../models/messageModel");
-const Order = require("../models/orderModel");
+import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import Message from "../models/messageModel.js";
+import Order from "../models/orderModel.js";
 
 let io = null;
 
@@ -164,35 +164,27 @@ function initWebSocket(server) {
 }
 
 //  Notification helpers
-function notifyUser(userId, notification) {
+const notifyUser = (userId, notification) => {
   if (!io) return;
   const socketId = userSocketMap[userId?.toString()];
   if (socketId) {
     io.to(socketId).emit("notification", notification);
   }
-}
+};
 
-function notifyRole(role, notification) {
+const notifyRole = (role, notification) => {
   if (!io) return;
   io.to(role).emit("notification", notification);
-}
+};
 
-function closeChatRoom(orderId) {
+const closeChatRoom = (orderId) => {
   if (!io) return;
   io.to(`chat_${orderId}`).emit("chat_closed", {
     orderId,
     message: "This order has been delivered. The chat is now closed.",
   });
-}
-
-function getIO() {
-  return io;
-}
-
-module.exports = {
-  initWebSocket,
-  notifyUser,
-  notifyRole,
-  closeChatRoom,
-  getIO,
 };
+
+const getIO = () => io;
+
+export { initWebSocket, notifyUser, notifyRole, closeChatRoom, getIO };

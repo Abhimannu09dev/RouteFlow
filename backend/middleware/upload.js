@@ -1,33 +1,51 @@
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+const uploadDir = path.resolve("uploads");
 
-const uploadDir = path.join(__dirname, "../uploads");
+// Ensure upload directory exists
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// extension mapping (safer than trusting original filename)
+const mimeToExt = {
+  "image/jpeg": ".jpg",
+  "image/jpg": ".jpg",
+  "image/png": ".png",
+  "image/webp": ".webp",
+  "application/pdf": ".pdf",
+};
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, uploadDir);
+    const userId = req.user?.id || "unknown";
+
+    // Optional: create user-specific folder
+    const userDir = path.join(uploadDir, userId.toString());
+
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+
+    cb(null, userDir);
   },
+
   filename: (req, file, cb) => {
     const userId = req.user?.id || "unknown";
     const fieldname = file.fieldname;
-    const ext = path.extname(file.originalname).toLowerCase();
-    const filename = `${userId}-${fieldname}-${Date.now()}${ext}`;
+
+    const ext = mimeToExt[file.mimetype] || "";
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+
+    const filename = `${userId}-${fieldname}-${uniqueSuffix}${ext}`;
     cb(null, filename);
   },
 });
 
+// File filter
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = [
-    "image/jpeg",
-    "image/jpg",
-    "image/png",
-    "image/webp",
-    "application/pdf",
-  ];
+  const allowedMimeTypes = Object.keys(mimeToExt);
 
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
@@ -39,17 +57,19 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Multer instance
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
 });
 
+// Multiple fields setup
 const uploadProfileFiles = upload.fields([
   { name: "companyLogo", maxCount: 1 },
   { name: "documents", maxCount: 5 },
 ]);
 
-module.exports = { upload, uploadProfileFiles };
+export { upload, uploadProfileFiles };

@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const supportTicketSchema = new Schema(
   {
@@ -42,4 +42,4 @@ const supportTicketSchema = new Schema(
 
 supportTicketSchema.index({ userId: 1, createdAt: -1 });
 
-module.exports = mongoose.model("SupportTicket", supportTicketSchema);
+export default mongoose.model("SupportTicket", supportTicketSchema);

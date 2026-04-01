@@ -22,4 +22,4 @@ function getUsersByRole(role) {
   return result;
 }
 
-module.exports = { addUser, removeUser, getUserSocket, getUsersByRole };
+export default { addUser, removeUser, getUserSocket, getUsersByRole };

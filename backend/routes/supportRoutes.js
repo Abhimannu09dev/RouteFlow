@@ -1,11 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const {
+import { Router } from "express";
+import {
   createTicket,
   getMyTickets,
-} = require("../controllers/supportController");
+} from "../controllers/supportController.js";
+
+const router = Router();
 
 router.post("/", createTicket);
 router.get("/my-tickets", getMyTickets);
 
-module.exports = router;
+export default router;

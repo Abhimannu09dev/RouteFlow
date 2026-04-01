@@ -1,15 +1,16 @@
-const express = require("express");
-const router = express.Router();
-const {
+import { Router } from "express";
+import {
   getNotificationPreferences,
   updateNotificationPreferences,
   changePassword,
   deactivateAccount,
-} = require("../controllers/settingsController");
+} from "../controllers/settingsController.js";
+
+const router = Router();
 
 router.get("/notifications", getNotificationPreferences);
 router.put("/notifications", updateNotificationPreferences);
 router.put("/change-password", changePassword);
 router.delete("/account", deactivateAccount);
 
-module.exports = router;
+export default router;

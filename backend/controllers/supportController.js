@@ -1,4 +1,4 @@
-const SupportTicket = require("../models/supportTicketModel");
+import SupportTicket from "../models/supportTicketModel.js";
 
 const VALID_CATEGORIES = ["general", "technical", "billing"];
 
@@ -49,4 +49,4 @@ const getMyTickets = async (req, res) => {
   }
 };
 
-module.exports = { createTicket, getMyTickets };
+export { createTicket, getMyTickets };

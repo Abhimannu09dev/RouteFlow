@@ -1,8 +1,8 @@
-const Notification = require("../models/notificationModel");
-const { notifyUser, notifyRole } = require("./index");
+import Notification from "../models/notificationModel.js";
+import { notifyUser, notifyRole } from "./index.js";
 
 //  Helper: save to DB and emit via socket
-async function createAndSend(recipientId, type, title, message, orderId) {
+const createAndSend = async (recipientId, type, title, message, orderId) => {
   try {
     const notification = await Notification.create({
       recipient: recipientId,
@@ -16,10 +16,10 @@ async function createAndSend(recipientId, type, title, message, orderId) {
   } catch (error) {
     console.error("Failed to create notification:", error.message);
   }
-}
+};
 
 //  New order placed — notify all logistics companies
-async function notifyLogisticsNewOrder(order) {
+const notifyLogisticsNewOrder = async (order) => {
   try {
     notifyRole("logistics", {
       type: "new_order",
@@ -30,10 +30,10 @@ async function notifyLogisticsNewOrder(order) {
   } catch (error) {
     console.error("notifyLogisticsNewOrder error:", error.message);
   }
-}
+};
 
 //  New bid received — notify the manufacturer
-async function notifyManufacturerNewBid(order, offer, logisticsCompanyName) {
+const notifyManufacturerNewBid = async (order, offer, logisticsCompanyName) => {
   return createAndSend(
     order.manufacturer,
     "new_bid",
@@ -41,10 +41,10 @@ async function notifyManufacturerNewBid(order, offer, logisticsCompanyName) {
     `${logisticsCompanyName} submitted a bid of NPR ${offer.proposedPrice.toLocaleString()} on order ${order.orderId}.`,
     order.orderId,
   );
-}
+};
 
 //  Bid accepted — notify the winning logistics company
-async function notifyLogisticsBidAccepted(offer, order) {
+const notifyLogisticsBidAccepted = async (offer, order) => {
   return createAndSend(
     offer.logistics,
     "bid_accepted",
@@ -52,10 +52,14 @@ async function notifyLogisticsBidAccepted(offer, order) {
     `Your bid of NPR ${offer.proposedPrice.toLocaleString()} for order ${order.orderId} was accepted. Check your History tab.`,
     order.orderId,
   );
-}
+};
 
 //  Bid rejected — notify the losing logistics companies
-async function notifyLogisticsBidRejected(logisticsId, orderId, proposedPrice) {
+const notifyLogisticsBidRejected = async (
+  logisticsId,
+  orderId,
+  proposedPrice,
+) => {
   return createAndSend(
     logisticsId,
     "bid_rejected",
@@ -63,10 +67,10 @@ async function notifyLogisticsBidRejected(logisticsId, orderId, proposedPrice) {
     `Your bid of NPR ${proposedPrice.toLocaleString()} for order ${orderId} was not selected.`,
     orderId,
   );
-}
+};
 
 //  Order directly accepted — notify manufacturer
-async function notifyManufacturerOrderAccepted(order, logisticsCompanyName) {
+const notifyManufacturerOrderAccepted = async (order, logisticsCompanyName) => {
   return createAndSend(
     order.manufacturer,
     "order_accepted",
@@ -74,14 +78,14 @@ async function notifyManufacturerOrderAccepted(order, logisticsCompanyName) {
     `${logisticsCompanyName} accepted your order ${order.orderId} at your expected price.`,
     order.orderId,
   );
-}
+};
 
 //  Status update — notify manufacturer
-async function notifyManufacturerStatusUpdate(
+const notifyManufacturerStatusUpdate = async (
   order,
   newStatus,
   logisticsCompanyName,
-) {
+) => {
   const statusMessages = {
     "in transit": `Your order ${order.orderId} is now in transit with ${logisticsCompanyName}.`,
     delivered: `Your order ${order.orderId} has been delivered by ${logisticsCompanyName}.`,
@@ -98,9 +102,9 @@ async function notifyManufacturerStatusUpdate(
     message,
     order.orderId,
   );
-}
+};
 
-module.exports = {
+export {
   notifyLogisticsNewOrder,
   notifyManufacturerNewBid,
   notifyLogisticsBidAccepted,

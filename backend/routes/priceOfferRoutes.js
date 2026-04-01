@@ -1,15 +1,14 @@
-const express = require("express");
-const router = express.Router();
-
-const {
+import { Router } from "express";
+import {
   submitOffer,
   getOffers,
   updateOffer,
   withdrawOffer,
   acceptOffer,
-} = require("../controllers/priceOfferController");
+} from "../controllers/priceOfferController.js";
+import { rolecheck } from "../middleware/auth.js";
 
-const { rolecheck } = require("../middleware/auth");
+const router = Router();
 
 router.post("/:orderId/offers", rolecheck(["logistics"]), submitOffer);
 router.get("/:orderId/offers", getOffers);
@@ -25,4 +24,4 @@ router.put(
   acceptOffer,
 );
 
-module.exports = router;
+export default router;
