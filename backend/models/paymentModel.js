@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-const { Schema } = mongoose;
+import { Schema } from "mongoose";
 
 const paymentSchema = new Schema(
   {
@@ -45,4 +45,4 @@ const paymentSchema = new Schema(
 paymentSchema.index({ orderId: 1 });
 paymentSchema.index({ payerId: 1 });
 
-module.exports = mongoose.model("Payment", paymentSchema);
+export default mongoose.model("Payment", paymentSchema);

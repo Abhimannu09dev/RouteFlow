@@ -1,4 +1,5 @@
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const messageSchema = new mongoose.Schema(
   {
@@ -48,4 +49,4 @@ messageSchema.index({ orderId: 1, createdAt: 1 });
 // Fast unread count lookup per user
 messageSchema.index({ receiverId: 1, isRead: 1 });
 
-module.exports = mongoose.model("Message", messageSchema);
+export default mongoose.model("Message", messageSchema);

@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const orderSchema = new Schema({
   orderId: { type: String, required: true, unique: true },
@@ -26,5 +26,4 @@ const orderSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
-const Order = mongoose.model("Order", orderSchema);
-module.exports = Order;
+export default mongoose.model("Order", orderSchema);

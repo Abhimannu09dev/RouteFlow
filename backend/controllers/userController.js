@@ -1,8 +1,8 @@
-const bcrypt = require("bcrypt");
-const User = require("../models/userModel");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const { sendOtpEmail, sendEmail } = require("../utils/mailer");
+import bcrypt from "bcrypt";
+import User from "../models/userModel.js";
+import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import { sendOtpEmail, sendEmail } from "../utils/mailer.js";
 
 function generateOtp() {
   return crypto.randomInt(100000, 999999).toString();
@@ -13,7 +13,7 @@ function hashOtp(otp) {
 }
 
 // Function to create user
-async function createUser(req, res, next) {
+const createUser = async (req, res, next) => {
   try {
     const { companyName, email, password, role } = req.body;
 
@@ -94,10 +94,10 @@ async function createUser(req, res, next) {
       .status(400)
       .json({ error: error.message || "Error creating user" });
   }
-}
+};
 
 // Function to login the user
-async function loginUser(req, res, next) {
+const loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     // validation of data through backend
@@ -154,9 +154,9 @@ async function loginUser(req, res, next) {
     console.error("Error logging in", error.message);
     res.status(500).json({ error: "Failed to log in. Please try again!" });
   }
-}
+};
 
-async function verifyOtp(req, res) {
+const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
@@ -192,9 +192,9 @@ async function verifyOtp(req, res) {
     console.error("Error verifying OTP", error.message);
     return res.status(500).json({ error: "Failed to verify OTP" });
   }
-}
+};
 
-async function resendOtp(req, res) {
+const resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -234,9 +234,9 @@ async function resendOtp(req, res) {
     console.error("Error resending OTP", error.message);
     return res.status(500).json({ error: "Failed to resend OTP" });
   }
-}
+};
 
-async function forgotPassword(req, res) {
+const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -323,9 +323,9 @@ async function forgotPassword(req, res) {
       .status(500)
       .json({ error: "Failed to process password reset request" });
   }
-}
+};
 
-async function resetPassword(req, res) {
+const resetPassword = async (req, res) => {
   try {
     const { token, password, confirmPassword } = req.body;
 
@@ -377,7 +377,7 @@ async function resetPassword(req, res) {
     console.error("Error resetting password:", error.message);
     return res.status(500).json({ error: "Failed to reset password" });
   }
-}
+};
 
 // async function accountVerificationStatus(req, res) {
 //   try {
@@ -437,7 +437,7 @@ async function resetPassword(req, res) {
 //   }
 // }
 
-module.exports = {
+export {
   createUser,
   loginUser,
   verifyOtp,

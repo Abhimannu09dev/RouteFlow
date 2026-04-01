@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const documentSchema = new Schema({
   type: {
@@ -45,5 +45,4 @@ const userSchema = new Schema({
   resetTokenExpires: { type: Date },
 });
 
-const User = mongoose.model("User", userSchema);
-module.exports = User;
+export default mongoose.model("User", userSchema);

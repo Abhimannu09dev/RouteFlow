@@ -1,12 +1,13 @@
-const path = require("path");
-const Message = require("../models/messageModel");
-const Order = require("../models/orderModel");
+import path from "path";
+import Message from "../models/messageModel.js";
+import Order from "../models/orderModel.js";
+import { getIO } from "../websocket/index.js";
 
 // Statuses where chat is accessible
 const CHAT_ALLOWED_STATUSES = ["accepted", "in transit", "delivered"];
 
 // Verify the requesting user is a participant of the order and chat is accessible
-async function resolveOrderForChat(orderId, userId) {
+const resolveOrderForChat = async (orderId, userId) => {
   const order = await Order.findById(orderId);
   if (!order) {
     const err = new Error("Order not found");
@@ -34,7 +35,7 @@ async function resolveOrderForChat(orderId, userId) {
     order,
     isClosed: order.status === "delivered",
   };
-}
+};
 
 // List all chat-eligible orders for the logged-in user, with last message, unread count.
 const getConversations = async (req, res) => {
@@ -170,12 +171,10 @@ const sendMessage = async (req, res) => {
     }
 
     if (!content?.trim() && !fileUrl) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Message content or file is required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Message content or file is required",
+      });
     }
 
     const message = await Message.create({
@@ -191,7 +190,6 @@ const sendMessage = async (req, res) => {
     await message.populate("senderId", "companyName email role");
 
     // Emit to the order's chat room via Socket.io
-    const { getIO } = require("../websocket");
     const io = getIO();
     if (io) {
       io.to(`chat_${orderId}`).emit("message_received", message);
@@ -220,4 +218,4 @@ const getUnreadCount = async (req, res) => {
   }
 };
 
-module.exports = { getConversations, getMessages, sendMessage, getUnreadCount };
+export { getConversations, getMessages, sendMessage, getUnreadCount };

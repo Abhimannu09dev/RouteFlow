@@ -1,6 +1,7 @@
 import crypto from "crypto";
-import Payment from "../models/paymentModel";
-import Order from "../models/orderModel";
+import Payment from "../models/paymentModel.js";
+import Order from "../models/orderModel.js";
+import PriceOffer from "../models/priceOfferModel.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
@@ -16,7 +17,7 @@ const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE || "EPAYTEST";
 const ESEWA_BASE_URL = "https://uat.esewa.com.np";
 
 //  Helper: verify order is delivered and user is manufacturer
-async function resolvePayableOrder(orderId, userId) {
+const resolvePayableOrder = async (orderId, userId) => {
   const order = await Order.findById(orderId).populate(
     "logistics",
     "companyName email",
@@ -37,7 +38,7 @@ async function resolvePayableOrder(orderId, userId) {
     throw err;
   }
   return order;
-}
+};
 
 const getPaymentStatus = async (req, res) => {
   try {
@@ -56,7 +57,7 @@ const initiateKhalti = async (req, res) => {
     const order = await resolvePayableOrder(orderId, req.user.id);
 
     // Get accepted bid amount
-    const PriceOffer = require("../models/priceOfferModel");
+
     const acceptedBid = await PriceOffer.findOne({
       order: orderId,
       status: "accepted",
@@ -180,8 +181,6 @@ const initiateEsewa = async (req, res) => {
   try {
     const { orderId } = req.body;
     const order = await resolvePayableOrder(orderId, req.user.id);
-
-    const PriceOffer = require("../models/priceOfferModel");
     const acceptedBid = await PriceOffer.findOne({
       order: orderId,
       status: "accepted",
@@ -284,7 +283,7 @@ const verifyEsewa = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getPaymentStatus,
   initiateKhalti,
   verifyKhalti,

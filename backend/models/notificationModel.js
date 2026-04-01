@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const notificationSchema = new Schema({
   recipient: {
@@ -28,5 +28,4 @@ const notificationSchema = new Schema({
 
 notificationSchema.index({ recipient: 1, isRead: 1, createdAt: -1 });
 
-const Notification = mongoose.model("Notification", notificationSchema);
-module.exports = Notification;
+export default mongoose.model("Notification", notificationSchema);

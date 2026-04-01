@@ -1,19 +1,19 @@
 import { Router } from "express";
-import authRoutes from "./authRoutes";
-import orderRoutes from "./orderRoutes";
-import profileRoutes from "./profileRoutes";
-import adminRoutes from "./adminRoutes";
-import priceOfferRoutes from "./priceOfferRoutes";
-import notificationRoutes from "./notificationRoutes";
-import chatRoutes from "./chatRoutes";
-import settingsRoutes from "./settingsRoutes";
-import supportRoutes from "./supportRoutes";
-import paymentRoutes from "./paymentRoutes";
-import { auth } from "../middleware/auth";
+import authRouter from "./authRoutes.js";
+import orderRoutes from "./orderRoutes.js";
+import profileRoutes from "./profileRoutes.js";
+import adminRoutes from "./adminRoutes.js";
+import priceOfferRoutes from "./priceOfferRoutes.js";
+import notificationRoutes from "./notificationRoutes.js";
+import chatRoutes from "./chatRoutes.js";
+import settingsRoutes from "./settingsRoutes.js";
+import supportRoutes from "./supportRoutes.js";
+import paymentRoutes from "./paymentRoutes.js";
+import { auth } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use("/auth", authRoutes);
+router.use("/auth", authRouter);
 router.use("/", auth, orderRoutes);
 router.use("/orders", auth, priceOfferRoutes);
 router.use("/profile", auth, profileRoutes);

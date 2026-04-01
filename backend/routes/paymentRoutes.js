@@ -1,13 +1,13 @@
-import express from "express";
+import { Router } from "express";
 import {
   getPaymentStatus,
   initiateKhalti,
   verifyKhalti,
   initiateEsewa,
   verifyEsewa,
-} from "../controllers/paymentController";
+} from "../controllers/paymentController.js";
 
-const router = express.Router();
+const router = Router();
 
 // check payment status for an order
 router.get("/status/:orderId", getPaymentStatus);

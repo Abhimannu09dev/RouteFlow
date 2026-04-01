@@ -1,6 +1,6 @@
-const User = require("../models/userModel");
-const fs = require("fs");
-const path = require("path");
+import User from "../models/userModel.js";
+import fs from "fs";
+import path from "path";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
@@ -15,7 +15,7 @@ function deleteFile(filename) {
 }
 
 // Get current user's profile
-async function getProfile(req, res) {
+const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
       "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires",
@@ -35,10 +35,10 @@ async function getProfile(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 // Update profile
-async function updateProfile(req, res) {
+const updateProfile = async (req, res) => {
   try {
     const {
       companyName,
@@ -108,10 +108,10 @@ async function updateProfile(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 //  Upload documents
-async function uploadDocuments(req, res) {
+const uploadDocuments = async (req, res) => {
   try {
     if (
       !req.files ||
@@ -202,10 +202,10 @@ async function uploadDocuments(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 //  Delete a specific document
-async function deleteDocument(req, res) {
+const deleteDocument = async (req, res) => {
   try {
     const { documentId } = req.params;
 
@@ -243,10 +243,10 @@ async function deleteDocument(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 //  Submit profile for admin verification
-async function submitForVerification(req, res) {
+const submitForVerification = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
@@ -305,9 +305,9 @@ async function submitForVerification(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-module.exports = {
+export {
   getProfile,
   updateProfile,
   uploadDocuments,

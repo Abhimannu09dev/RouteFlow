@@ -1,16 +1,17 @@
-const express = require("express");
-const router = express.Router();
-const {
+import { Router } from "express";
+import {
   getConversations,
   getMessages,
   sendMessage,
   getUnreadCount,
-} = require("../controllers/chatController");
-const { upload } = require("../middleware/upload");
+} from "../controllers/chatController.js";
+import { upload } from "../middleware/upload.js";
+
+const router = Router();
 
 router.get("/conversations", getConversations);
 router.get("/unread-count", getUnreadCount);
 router.get("/:orderId/messages", getMessages);
 router.post("/:orderId/send", upload.single("file"), sendMessage);
 
-module.exports = router;
+export default router;
