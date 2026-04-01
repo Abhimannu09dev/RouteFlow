@@ -2,15 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bell,
-  CheckCheck,
-  Package,
-  Gavel,
-  Truck,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { Bell, CheckCheck, Package, Gavel, Truck, X } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 
 type Notification = {
