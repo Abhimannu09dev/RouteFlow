@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config();
 import crypto from "crypto";
 import Payment from "../models/paymentModel.js";
 import Order from "../models/orderModel.js";
@@ -6,19 +8,17 @@ import PriceOffer from "../models/priceOfferModel.js";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 //  Khalti Config
-const KHALTI_SECRET_KEY =
-  process.env.KHALTI_SECRET_KEY ||
-  "test_secret_key_f59e8b7d18b4499ca40f68195a473d57";
+const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+console.log("KHALTI_SECRET_KEY:", KHALTI_SECRET_KEY);
 const KHALTI_INITIATE_URL = "https://dev.khalti.com/api/v2/epayment/initiate/";
 const KHALTI_LOOKUP_URL = "https://dev.khalti.com/api/v2/epayment/lookup/";
 
 //  eSewa Config ─
-const ESEWA_SECRET_KEY = (
-  process.env.ESEWA_SECRET_KEY || "8gBm/:&EnhH.1/q"
-).replace(/^"|"$/g, "");
-const ESEWA_MERCHANT_CODE = (
-  process.env.ESEWA_MERCHANT_CODE || "EPAYTEST"
-).replace(/^"|"$/g, "");
+const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
+const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
+  /^"|"$/g,
+  "",
+);
 const ESEWA_BASE_URL = "https://rc-epay.esewa.com.np";
 const ESEWA_VERIFY_URL = `${ESEWA_BASE_URL}/api/epay/transaction/status/`;
 
@@ -46,7 +46,6 @@ const resolvePayableOrder = async (orderId, userId) => {
   return order;
 };
 
-//  GET /payment/status/:orderId
 const getPaymentStatus = async (req, res) => {
   try {
     const payment = await Payment.findOne({
@@ -58,7 +57,6 @@ const getPaymentStatus = async (req, res) => {
   }
 };
 
-//  POST /payment/khalti/initiate ──
 const initiateKhalti = async (req, res) => {
   try {
     const { orderId } = req.body;
@@ -94,7 +92,7 @@ const initiateKhalti = async (req, res) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        return_url: `${FRONTEND_URL}/payment/khalti/verify?paymentId=${payment._id}`,
+        return_url: `${FRONTEND_URL}/payment/khalti/verify`,
         website_url: FRONTEND_URL,
         amount: amountInPaisa,
         purchase_order_id: payment._id.toString(),
@@ -293,10 +291,29 @@ const verifyEsewa = async (req, res) => {
   }
 };
 
+const getMyPayments = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const payments = await Payment.find({
+      $or: [{ payerId: userId }, { receiverId: userId }],
+    })
+      .populate("orderId", "orderId productDetails routeFrom routeTo")
+      .populate("payerId", "companyName")
+      .populate("receiverId", "companyName")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, payments });
+  } catch (err) {
+    console.error("getMyPayments error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export {
   getPaymentStatus,
   initiateKhalti,
   verifyKhalti,
   initiateEsewa,
   verifyEsewa,
+  getMyPayments,
 };
