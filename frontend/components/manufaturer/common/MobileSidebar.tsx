@@ -50,7 +50,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm ${
+                className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all text-sm ${
                   pathname.includes(item.href)
                     ? "bg-white text-primary font-medium hover:text-primary-dark"
                     : "text-[#838383] hover:bg-white hover:text-primary"
@@ -68,7 +68,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 !transition-all text-sm ${
+                className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all text-sm ${
                   pathname.includes(item.href)
                     ? "bg-white text-primary font-medium hover:text-primary-dark"
                     : "text-[#838383] hover:bg-white hover:text-primary"
