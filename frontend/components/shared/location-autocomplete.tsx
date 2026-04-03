@@ -19,8 +19,6 @@ interface LocationRoutePickerProps {
 }
 
 export default function LocationRoutePicker({
-  valueFrom,
-  valueTo,
   onFromChange,
   onToChange,
   errorFrom,
@@ -51,7 +49,7 @@ export default function LocationRoutePicker({
   } | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
 
-  // ── Clear route layer from map ──────────────────────────────────────────────
+  //  Clear route layer from map
   function clearRoute() {
     const m = mapRef.current;
     if (!m) return;
@@ -60,7 +58,7 @@ export default function LocationRoutePicker({
     if (m.getSource("route")) m.removeSource("route");
   }
 
-  // ── Fetch OSRM route & draw blue line ──────────────────────────────────────
+  //  Fetch OSRM route & draw blue line
   async function drawRoute(
     from: [number, number],
     to: [number, number],
@@ -140,7 +138,7 @@ export default function LocationRoutePicker({
     }
   }
 
-  // ── Init Mapbox map + geocoders ─────────────────────────────────────────────
+  //  Init Mapbox map + geocoders ─
   useEffect(() => {
     if (mapRef.current || !mapContainer.current) return;
 
@@ -174,7 +172,7 @@ export default function LocationRoutePicker({
       map.addControl(new mapboxgl.NavigationControl(), "top-right");
       mapRef.current = map;
 
-      // ── Helper: make a teardrop marker element ────────────────────────────
+      //  Helper: make a teardrop marker element
       function makeMarkerEl(color: string) {
         const el = document.createElement("div");
         el.style.cssText = `
@@ -189,7 +187,7 @@ export default function LocationRoutePicker({
         return el;
       }
 
-      // ── FROM geocoder ─────────────────────────────────────────────────────
+      //  FROM geocoder ─
       fromGeocoder = new MapboxGeocoder({
         accessToken: mapboxgl.accessToken,
         bbox: NEPAL_BBOX,
@@ -239,7 +237,7 @@ export default function LocationRoutePicker({
         clearRoute();
       });
 
-      // ── TO geocoder ───────────────────────────────────────────────────────
+      //  TO geocoder ─
       toGeocoder = new MapboxGeocoder({
         accessToken: mapboxgl.accessToken,
         bbox: NEPAL_BBOX,
@@ -302,7 +300,7 @@ export default function LocationRoutePicker({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* ── Geocoder inputs ── */}
+      {/*  Geocoder inputs  */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="text-xs font-medium text-[#5B6871] mb-1.5 flex items-center gap-1 block">
@@ -325,7 +323,7 @@ export default function LocationRoutePicker({
         </div>
       </div>
 
-      {/* ── Route summary ── */}
+      {/*  Route summary  */}
       {(routeInfo || routeLoading) && (
         <div className="flex items-center gap-4 px-4 py-3 bg-blue-50 rounded-xl border border-blue-200">
           {routeLoading ? (
@@ -352,13 +350,13 @@ export default function LocationRoutePicker({
         </div>
       )}
 
-      {/* ── Map ── */}
+      {/*  Map  */}
       <div
         ref={mapContainer}
         className="w-full h-72 rounded-xl overflow-hidden border border-[#E5E9EB] shadow-sm"
       />
 
-      {/* ── Geocoder style overrides ── */}
+      {/*  Geocoder style overrides  */}
       <style>{`
         .geocoder-wrap .mapboxgl-ctrl-geocoder {
           width: 100% !important;

@@ -31,7 +31,7 @@ const RouteMapDisplay = dynamic(
   },
 );
 
-// ── Types ────────────────────────────────────────────────────────────────────
+//  Types 
 
 type Order = {
   _id: string;
@@ -68,7 +68,7 @@ type Offer = {
   };
 };
 
-// ── Sub-components ───────────────────────────────────────────────────────────
+//  Sub-components ─
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -232,7 +232,7 @@ function OfferCard({
   );
 }
 
-// ── Main Component ───────────────────────────────────────────────────────────
+//  Main Component ─
 
 export default function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter();
@@ -299,7 +299,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     });
   }
 
-  // ── Loading skeleton ──
+  //  Loading skeleton 
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -332,7 +332,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     );
   }
 
-  // ── Render ──
+  //  Render 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
       {/* Back */}
