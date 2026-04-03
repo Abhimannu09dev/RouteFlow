@@ -9,28 +9,23 @@ import {
   MapPin,
   Truck,
   FileText,
-  ChevronRight,
   Loader2,
   DollarSign,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 
-const NEPALI_CITIES = [
-  "Kathmandu",
-  "Lalitpur",
-  "Bhaktapur",
-  "Pokhara",
-  "Biratnagar",
-  "Birgunj",
-  "Dharan",
-  "Janakpur",
-  "Hetauda",
-  "Nepalgunj",
-  "Butwal",
-  "Dhangadhi",
-  "Itahari",
-  "Bharatpur",
-  "Gorkha",
-];
+// Dynamically import map picker — no SSR (mapbox-gl needs window)
+const LocationRoutePicker = dynamic(
+  () => import("@/components/shared/location-autocomplete"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-72 rounded-xl bg-[#F5F5F5] border border-[#E5E9EB] animate-pulse flex items-center justify-center">
+        <p className="text-sm text-[#B0B7C3]">Loading map...</p>
+      </div>
+    ),
+  },
+);
 
 const VEHICLE_TYPES = [
   { label: "Motorcycle (up to 20 kg)", value: "motorcycle" },
@@ -167,6 +162,15 @@ export default function OrderPlacementForm() {
     }
   }
 
+  function handleLocationChange(field: "routeFrom" | "routeTo") {
+    return (value: string) => {
+      setForm((prev) => ({ ...prev, [field]: value }));
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: undefined }));
+      }
+    };
+  }
+
   function handleToggle(field: "invoiceNeeded" | "vatBillNeeded") {
     return (value: boolean) => setForm((prev) => ({ ...prev, [field]: value }));
   }
@@ -181,10 +185,14 @@ export default function OrderPlacementForm() {
     if (!form.weight || Number(form.weight) <= 0)
       newErrors.weight = "Enter a valid weight";
     if (!form.vehicleType) newErrors.vehicleType = "Select a vehicle type";
-    if (!form.routeFrom) newErrors.routeFrom = "Select pickup city";
-    if (!form.routeTo) newErrors.routeTo = "Select destination city";
-    if (form.routeFrom && form.routeTo && form.routeFrom === form.routeTo)
-      newErrors.routeTo = "Destination must differ from pickup";
+    if (!form.routeFrom.trim()) newErrors.routeFrom = "Enter a pickup location";
+    if (!form.routeTo.trim()) newErrors.routeTo = "Enter a delivery location";
+    if (
+      form.routeFrom.trim() &&
+      form.routeTo.trim() &&
+      form.routeFrom.trim().toLowerCase() === form.routeTo.trim().toLowerCase()
+    )
+      newErrors.routeTo = "Delivery location must differ from pickup";
     if (form.expectedPrice && Number(form.expectedPrice) <= 0)
       newErrors.expectedPrice = "Enter a valid price";
 
@@ -192,7 +200,7 @@ export default function OrderPlacementForm() {
     return Object.keys(newErrors).length === 0;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!validate()) {
       toast.error("Please fix the errors before submitting.");
@@ -207,8 +215,8 @@ export default function OrderPlacementForm() {
         vehicleType: form.vehicleType,
         invoiceNeeded: form.invoiceNeeded,
         vatBillNeeded: form.vatBillNeeded,
-        routeFrom: form.routeFrom,
-        routeTo: form.routeTo,
+        routeFrom: form.routeFrom.trim(),
+        routeTo: form.routeTo.trim(),
         additionalInfo: form.additionalInfo.trim() || undefined,
         expectedPrice: form.expectedPrice
           ? Number(form.expectedPrice)
@@ -217,10 +225,10 @@ export default function OrderPlacementForm() {
       await orderAPI.createOrder(payload);
       toast.success("Order placed successfully!");
       setTimeout(() => router.push("/manufacturer/order-management"), 1500);
-    } catch (error: any) {
-      toast.error(
-        error.message || "Something went wrong while placing the order.",
-      );
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Something went wrong.";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -238,13 +246,13 @@ export default function OrderPlacementForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        {/* ── Product Information ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={Package}
             title="Product Information"
             subtitle="Describe what needs to be shipped"
           />
-
           <div className="mb-4">
             <FieldLabel label="Product Details" required />
             <textarea
@@ -261,7 +269,6 @@ export default function OrderPlacementForm() {
               </p>
             )}
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <FieldLabel label="Quantity (units)" required />
@@ -297,70 +304,24 @@ export default function OrderPlacementForm() {
           </div>
         </div>
 
+        {/* ── Shipment Route ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={MapPin}
             title="Shipment Route"
-            subtitle="Where is the shipment going?"
+            subtitle="Search locations and see the route on the map"
           />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <FieldLabel label="Pickup City" required />
-              <select
-                name="routeFrom"
-                value={form.routeFrom}
-                onChange={handleChange}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.routeFrom ? "ring-2 ring-red-300" : ""}`}
-              >
-                <option value="" disabled>
-                  Select city
-                </option>
-                {NEPALI_CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              {errors.routeFrom && (
-                <p className="text-xs text-red-400 mt-1">{errors.routeFrom}</p>
-              )}
-            </div>
-            <div>
-              <FieldLabel label="Destination City" required />
-              <select
-                name="routeTo"
-                value={form.routeTo}
-                onChange={handleChange}
-                className={`w-full p-3 rounded-xl bg-[#F5F5F5] text-sm outline-none focus:ring-2 focus:ring-primary/30 transition ${errors.routeTo ? "ring-2 ring-red-300" : ""}`}
-              >
-                <option value="" disabled>
-                  Select city
-                </option>
-                {NEPALI_CITIES.filter((c) => c !== form.routeFrom).map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              {errors.routeTo && (
-                <p className="text-xs text-red-400 mt-1">{errors.routeTo}</p>
-              )}
-            </div>
-          </div>
-          {form.routeFrom && form.routeTo && (
-            <div className="mt-4 flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20">
-              <MapPin size={14} className="text-primary shrink-0" />
-              <span className="text-sm font-medium text-[#252C32]">
-                {form.routeFrom}
-              </span>
-              <ChevronRight size={14} className="text-[#838383]" />
-              <span className="text-sm font-medium text-[#252C32]">
-                {form.routeTo}
-              </span>
-            </div>
-          )}
+          <LocationRoutePicker
+            valueFrom={form.routeFrom}
+            valueTo={form.routeTo}
+            onFromChange={handleLocationChange("routeFrom")}
+            onToChange={handleLocationChange("routeTo")}
+            errorFrom={errors.routeFrom}
+            errorTo={errors.routeTo}
+          />
         </div>
 
+        {/* ── Vehicle Requirement ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={Truck}
@@ -398,13 +359,13 @@ export default function OrderPlacementForm() {
           )}
         </div>
 
+        {/* ── Expected Price ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={DollarSign}
             title="Expected Price"
             subtitle="Set your budget — logistics companies will bid around this"
           />
-
           <div className="relative mb-3">
             <DollarSign
               size={14}
@@ -425,17 +386,14 @@ export default function OrderPlacementForm() {
           {errors.expectedPrice && (
             <p className="text-xs text-red-400 mb-2">{errors.expectedPrice}</p>
           )}
-
           <div className="flex items-start gap-2 px-3 py-2.5 bg-blue-50 border border-blue-200 rounded-xl">
             <DollarSign size={13} className="text-blue-500 shrink-0 mt-0.5" />
             <p className="text-xs text-blue-600">
-              Logistics companies will see your expected price and submit offers
-              above or below it. You compare all offers and accept the best one.
-              Leave blank if you prefer open bidding.
+              Logistics companies will see your expected price and submit
+              offers. You compare all bids and accept the best one. Leave blank
+              for open bidding.
             </p>
           </div>
-
-          {/* Live preview */}
           {form.expectedPrice && Number(form.expectedPrice) > 0 && (
             <div className="mt-3 flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20">
               <DollarSign size={14} className="text-primary shrink-0" />
@@ -449,6 +407,7 @@ export default function OrderPlacementForm() {
           )}
         </div>
 
+        {/* ── Document Requirements ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={FileText}
@@ -471,6 +430,7 @@ export default function OrderPlacementForm() {
           </div>
         </div>
 
+        {/* ── Additional Information ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
           <SectionHeader
             icon={FileText}
@@ -487,6 +447,7 @@ export default function OrderPlacementForm() {
           />
         </div>
 
+        {/* ── Actions ── */}
         <div className="flex items-center justify-end gap-3 pb-6">
           <button
             type="button"
