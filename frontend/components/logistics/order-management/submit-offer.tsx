@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -120,7 +121,7 @@ export default function SubmitOfferModal({
             <p className="text-sm font-semibold text-[#252C32]">
               {isUpdate ? "Update Your Bid" : "Place a Bid"}
             </p>
-            <p className="text-xs text-[#838383] mt-0.5 truncate max-w-[280px]">
+            <p className="text-xs text-[#838383] mt-0.5 truncate max-w-70">
               {orderDetails}
             </p>
           </div>

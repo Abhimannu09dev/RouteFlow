@@ -14,8 +14,8 @@ import { auth } from "../middleware/auth.js";
 const router = Router();
 
 router.use("/auth", authRouter);
-router.use("/", auth, orderRoutes);
 router.use("/orders", auth, priceOfferRoutes);
+router.use("/", auth, orderRoutes);
 router.use("/profile", auth, profileRoutes);
 router.use("/admin", auth, adminRoutes);
 router.use("/notifications", auth, notificationRoutes);

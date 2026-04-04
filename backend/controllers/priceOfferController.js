@@ -341,4 +341,32 @@ const acceptOffer = async (req, res) => {
   }
 };
 
-export { submitOffer, getOffers, updateOffer, withdrawOffer, acceptOffer };
+const getMyOffers = async (req, res) => {
+  try {
+    if (req.user.role !== "logistics") {
+      return res
+        .status(403)
+        .json({ success: false, message: "Logistics only" });
+    }
+
+    const offers = await PriceOffer.find({ logistics: req.user.id })
+      .populate({
+        path: "order",
+        populate: { path: "manufacturer", select: "companyName email" },
+      })
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({ success: true, offers });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export {
+  submitOffer,
+  getOffers,
+  updateOffer,
+  withdrawOffer,
+  acceptOffer,
+  getMyOffers,
+};

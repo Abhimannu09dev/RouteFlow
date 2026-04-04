@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 // Helper to reduce repetition
@@ -119,6 +120,8 @@ export const priceOfferAPI = {
     }),
 
   getOffers: (orderId: string) => apiFetch(`/orders/${orderId}/offers`),
+  getMyOffers: (): Promise<{ success: boolean; offers: any[] }> =>
+    apiFetch("/orders/my-offers"),
 
   updateOffer: (
     orderId: string,
@@ -198,7 +201,7 @@ export const chatAPI = {
     apiFetch("/chat/unread-count"),
 
   // File/image upload (plain text goes through socket)
-  sendFile: (
+  sendFile: async (
     orderId: string,
     receiverId: string,
     file: File,
@@ -208,11 +211,20 @@ export const chatAPI = {
     formData.append("file", file);
     formData.append("receiverId", receiverId);
     if (content) formData.append("content", content);
-    return fetch(`${API_BASE_URL}/chat/${orderId}/send`, {
+
+    const response = await fetch(`${API_BASE_URL}/chat/${orderId}/send`, {
       method: "POST",
       credentials: "include",
       body: formData,
-    }).then((r) => r.json());
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || data.message || "File upload failed");
+    }
+
+    return data;
   },
 };
 

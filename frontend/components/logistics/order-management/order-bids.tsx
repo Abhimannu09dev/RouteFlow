@@ -1,27 +1,23 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { orderAPI, priceOfferAPI } from "@/lib/api";
+import { priceOfferAPI } from "@/lib/api";
 import {
   Gavel,
   MapPin,
-  DollarSign,
   Clock,
   CheckCircle,
   XCircle,
   Search,
   RefreshCw,
-  Package,
-  ChevronRight,
   Trophy,
   Building2,
 } from "lucide-react";
 
-//  Types 
+//  Types
 
-type Order = {
+type OrderInOffer = {
   _id: string;
   orderId: string;
   productDetails: string;
@@ -35,6 +31,7 @@ type Order = {
 
 type MyOffer = {
   _id: string;
+  order: OrderInOffer;
   proposedPrice: number;
   estimatedDeliveryDays: number;
   note: string;
@@ -42,12 +39,7 @@ type MyOffer = {
   createdAt: string;
 };
 
-type BidItem = {
-  order: Order;
-  offer: MyOffer;
-};
-
-//  Offer Status Badge 
+//  Offer Status Badge
 
 function OfferStatusBadge({ status }: { status: string }) {
   const config: Record<
@@ -67,7 +59,7 @@ function OfferStatusBadge({ status }: { status: string }) {
       icon: CheckCircle,
     },
     rejected: {
-      label: "Rejected",
+      label: "Not Selected",
       color: "text-red-500",
       bg: "bg-red-50 border-red-200",
       icon: XCircle,
@@ -91,15 +83,16 @@ function OfferStatusBadge({ status }: { status: string }) {
   );
 }
 
-//  Bid Row 
+//  Bid Row
 
-function BidRow({ item }: { item: BidItem }) {
-  const { order, offer } = item;
+function BidRow({ offer }: { offer: MyOffer }) {
+  const order = offer.order;
   const isAccepted = offer.status === "accepted";
 
-  const priceDiff = order.expectedPrice
-    ? offer.proposedPrice - order.expectedPrice
-    : null;
+  const priceDiff =
+    order.expectedPrice != null
+      ? offer.proposedPrice - order.expectedPrice
+      : null;
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-NP", {
@@ -116,7 +109,7 @@ function BidRow({ item }: { item: BidItem }) {
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {/* Order + manufacturer info */}
+        {/* Order info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-mono text-xs font-bold text-[#252C32]">
@@ -133,7 +126,7 @@ function BidRow({ item }: { item: BidItem }) {
           <p className="text-sm font-medium text-[#252C32] truncate">
             {order.productDetails}
           </p>
-          <div className="flex items-center gap-3 mt-0.5 text-xs text-[#838383]">
+          <div className="flex items-center gap-3 mt-0.5 text-xs text-[#838383] flex-wrap">
             <span className="flex items-center gap-1">
               <MapPin size={10} />
               {order.routeFrom} → {order.routeTo}
@@ -147,7 +140,6 @@ function BidRow({ item }: { item: BidItem }) {
 
         {/* Price comparison */}
         <div className="flex items-center gap-6 shrink-0">
-          {/* Expected */}
           <div className="text-right">
             <p className="text-[10px] text-[#838383]">Expected</p>
             <p className="text-sm font-semibold text-[#252C32]">
@@ -157,13 +149,11 @@ function BidRow({ item }: { item: BidItem }) {
             </p>
           </div>
 
-          {/* My bid */}
           <div className="text-right">
             <p className="text-[10px] text-[#838383]">Your Bid</p>
             <p className="text-sm font-bold text-primary">
               NPR {offer.proposedPrice.toLocaleString()}
             </p>
-            {/* Difference from expected */}
             {priceDiff !== null && (
               <p
                 className={`text-[10px] font-medium ${
@@ -177,7 +167,6 @@ function BidRow({ item }: { item: BidItem }) {
             )}
           </div>
 
-          {/* Delivery days */}
           <div className="text-right hidden sm:block">
             <p className="text-[10px] text-[#838383]">Delivery</p>
             <p className="text-sm font-semibold text-[#252C32]">
@@ -185,7 +174,6 @@ function BidRow({ item }: { item: BidItem }) {
             </p>
           </div>
 
-          {/* Date */}
           <div className="text-right hidden sm:block">
             <p className="text-[10px] text-[#838383]">Bid Date</p>
             <p className="text-xs text-[#252C32]">
@@ -195,7 +183,6 @@ function BidRow({ item }: { item: BidItem }) {
         </div>
       </div>
 
-      {/* Note if any */}
       {offer.note && (
         <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 mt-3 leading-relaxed">
           📝 {offer.note}
@@ -205,52 +192,31 @@ function BidRow({ item }: { item: BidItem }) {
   );
 }
 
-//  Main Component 
+//  Main Component
 
 export default function LogisticsBids() {
-  const [items, setItems] = useState<BidItem[]>([]);
+  const [offers, setOffers] = useState<MyOffer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<
-    "all" | "pending" | "accepted" | "rejected"
+    "all" | "pending" | "accepted" | "rejected" | "withdrawn"
   >("all");
-
-  //  Fetch: get available orders, then filter to ones where I have a bid 
 
   async function fetchData(silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const data = await orderAPI.getOrders();
-      const orders: Order[] = Array.isArray(data.orders) ? data.orders : [];
-
-      // Fetch my offer for each order in parallel
-      const offerResults = await Promise.allSettled(
-        orders.map((o) => priceOfferAPI.getOffers(o.orderId)),
-      );
-
-      const bidItems: BidItem[] = [];
-      offerResults.forEach((result, i) => {
-        if (result.status === "fulfilled") {
-          const offers: MyOffer[] = result.value.offers || [];
-          if (offers.length > 0) {
-            bidItems.push({ order: orders[i], offer: offers[0] });
-          }
-        }
-      });
-
-      // Sort: accepted first, then pending, then others
-      bidItems.sort((a, b) => {
+      const res = await priceOfferAPI.getMyOffers();
+      const sorted = (res.offers || []).sort((a: MyOffer, b: MyOffer) => {
         const order = ["accepted", "pending", "rejected", "withdrawn"];
-        return order.indexOf(a.offer.status) - order.indexOf(b.offer.status);
+        return order.indexOf(a.status) - order.indexOf(b.status);
       });
-
-      setItems(bidItems);
+      setOffers(sorted);
     } catch {
       if (silent) toast.error("Failed to refresh");
-      setItems([]);
+      setOffers([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -263,29 +229,29 @@ export default function LogisticsBids() {
 
   const stats = useMemo(
     () => ({
-      total: items.length,
-      pending: items.filter((i) => i.offer.status === "pending").length,
-      accepted: items.filter((i) => i.offer.status === "accepted").length,
-      rejected: items.filter((i) => i.offer.status === "rejected").length,
+      total: offers.length,
+      pending: offers.filter((o) => o.status === "pending").length,
+      accepted: offers.filter((o) => o.status === "accepted").length,
+      rejected: offers.filter((o) => o.status === "rejected").length,
     }),
-    [items],
+    [offers],
   );
 
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+  const filteredOffers = useMemo(() => {
+    return offers.filter((offer) => {
       const matchesFilter =
-        activeFilter === "all" || item.offer.status === activeFilter;
+        activeFilter === "all" || offer.status === activeFilter;
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         !q ||
-        item.order.orderId.toLowerCase().includes(q) ||
-        item.order.productDetails.toLowerCase().includes(q) ||
-        item.order.routeFrom?.toLowerCase().includes(q) ||
-        item.order.routeTo?.toLowerCase().includes(q) ||
-        item.order.manufacturer.companyName.toLowerCase().includes(q);
+        offer.order.orderId.toLowerCase().includes(q) ||
+        offer.order.productDetails.toLowerCase().includes(q) ||
+        offer.order.routeFrom?.toLowerCase().includes(q) ||
+        offer.order.routeTo?.toLowerCase().includes(q) ||
+        offer.order.manufacturer.companyName.toLowerCase().includes(q);
       return matchesFilter && matchesSearch;
     });
-  }, [items, activeFilter, searchQuery]);
+  }, [offers, activeFilter, searchQuery]);
 
   if (isLoading) {
     return (
@@ -318,7 +284,7 @@ export default function LogisticsBids() {
         <div>
           <h1 className="text-xl font-semibold text-[#252C32]">My Bids</h1>
           <p className="text-sm text-[#838383] mt-0.5">
-            All orders where you have placed a price offer
+            All price offers you have submitted
           </p>
         </div>
         <button
@@ -437,7 +403,7 @@ export default function LogisticsBids() {
         </div>
 
         {/* Rows */}
-        {filteredItems.length === 0 ? (
+        {filteredOffers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
               <Gavel size={24} className="text-[#B0B7C3]" />
@@ -450,21 +416,22 @@ export default function LogisticsBids() {
             </p>
           </div>
         ) : (
-          filteredItems.map((item) => (
-            <BidRow key={item.order._id} item={item} />
+          filteredOffers.map((offer) => (
+            <BidRow key={offer._id} offer={offer} />
           ))
         )}
 
-        {/* Footer */}
-        {filteredItems.length > 0 && (
+        {filteredOffers.length > 0 && (
           <div className="px-5 py-3 border-t border-[#F5F5F5]">
             <p className="text-xs text-[#838383]">
               Showing{" "}
               <span className="font-medium text-[#252C32]">
-                {filteredItems.length}
+                {filteredOffers.length}
               </span>{" "}
               of{" "}
-              <span className="font-medium text-[#252C32]">{items.length}</span>{" "}
+              <span className="font-medium text-[#252C32]">
+                {offers.length}
+              </span>{" "}
               bids
             </p>
           </div>
