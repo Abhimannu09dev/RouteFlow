@@ -1,6 +1,24 @@
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 
+const parsePagination = (query) => {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+};
+
+const buildPaginationMeta = (total, page, limit) => ({
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+});
+
+const HIDDEN_FIELDS =
+  "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires";
+
+// Get platform-wide stats for admin dashboard
 const getAdminStats = async (req, res) => {
   try {
     const [
@@ -41,20 +59,21 @@ const getAdminStats = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+// Get all users with optional filters and pagination
+// Query params: ?status=pending|verified|rejected&role=manufacturer|logistics&search=text&page=1&limit=10
 const getAllUsers = async (req, res) => {
   try {
     const { status, role, search } = req.query;
+    const { page, limit, skip } = parsePagination(req.query);
+
     const filter = { role: { $ne: "admin" } };
 
-    // Filter by verification status
     if (status === "pending") {
       filter.submittedForVerification = true;
       filter.isAccountVerified = false;
@@ -65,12 +84,10 @@ const getAllUsers = async (req, res) => {
       filter.isAccountVerified = false;
     }
 
-    // Filter by role
     if (role === "manufacturer" || role === "logistics") {
       filter.role = role;
     }
 
-    // Search by company name or email
     if (search) {
       filter.$or = [
         { companyName: { $regex: search, $options: "i" } },
@@ -78,30 +95,33 @@ const getAllUsers = async (req, res) => {
       ];
     }
 
-    const users = await User.find(filter)
-      .select(
-        "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires",
-      )
-      .sort({ createdAt: -1 });
+    const [users, total] = await Promise.all([
+      User.find(filter)
+        .select(HIDDEN_FIELDS)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(filter),
+    ]);
 
-    return res.status(200).json({ success: true, users });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
+    return res.status(200).json({
+      success: true,
+      users,
+      pagination: buildPaginationMeta(total, page, limit),
     });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+// Get a single user by ID with their order stats
 const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findById(userId).select(
-      "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires",
-    );
-
+    const user = await User.findById(userId).select(HIDDEN_FIELDS);
     if (!user || user.role === "admin") {
       return res
         .status(404)
@@ -127,14 +147,13 @@ const getUserById = async (req, res) => {
       orderStats: { totalOrders, activeOrders },
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+// Approve a user's account verification
 const approveUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -147,9 +166,7 @@ const approveUser = async (req, res) => {
         rejectionReason: undefined,
       },
       { new: true },
-    ).select(
-      "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires",
-    );
+    ).select(HIDDEN_FIELDS);
 
     if (!user || user.role === "admin") {
       return res
@@ -163,24 +180,22 @@ const approveUser = async (req, res) => {
       user,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
+// Reject a user's verification with a reason
 const rejectUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
 
-    if (!reason || !reason.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Rejection reason is required",
-      });
+    if (!reason?.trim()) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Rejection reason is required" });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -191,9 +206,7 @@ const rejectUser = async (req, res) => {
         rejectionReason: reason.trim(),
       },
       { new: true },
-    ).select(
-      "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires",
-    );
+    ).select(HIDDEN_FIELDS);
 
     if (!user || user.role === "admin") {
       return res
@@ -207,11 +220,9 @@ const rejectUser = async (req, res) => {
       user,
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 

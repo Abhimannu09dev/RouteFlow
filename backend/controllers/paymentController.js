@@ -11,6 +11,21 @@ const KHALTI_LOOKUP_URL = "https://dev.khalti.com/api/v2/epayment/lookup/";
 const ESEWA_BASE_URL = "https://rc-epay.esewa.com.np";
 const ESEWA_VERIFY_URL = `${ESEWA_BASE_URL}/api/epay/transaction/status/`;
 
+const parsePagination = (query) => {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+};
+
+const buildPaginationMeta = (total, page, limit) => ({
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+});
+
+// Verify the order is delivered and the requesting user is the manufacturer
 const resolvePayableOrder = async (orderId, userId) => {
   const order = await Order.findById(orderId).populate(
     "logistics",
@@ -34,19 +49,21 @@ const resolvePayableOrder = async (orderId, userId) => {
   return order;
 };
 
+// Get the latest payment status for an order
 const getPaymentStatus = async (req, res) => {
   try {
-    const payment = await Payment.findOne({
-      orderId: req.params.orderId,
-    }).sort({ createdAt: -1 });
-    res.json({ success: true, payment });
-  } catch (err) {
-    res.status(500).json({ success: false, message: "Server error" });
+    const payment = await Payment.findOne({ orderId: req.params.orderId }).sort(
+      { createdAt: -1 },
+    );
+    return res.status(200).json({ success: true, payment });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// Initiate a Khalti payment for a delivered order
 const initiateKhalti = async (req, res) => {
-  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY; // read lazily — ES Module dotenv timing fix
 
   try {
     const { orderId } = req.body;
@@ -62,8 +79,6 @@ const initiateKhalti = async (req, res) => {
         message: "No accepted bid found for this order",
       });
     }
-
-    const amountInPaisa = Math.round(acceptedBid.proposedPrice * 100);
 
     const payment = await Payment.create({
       orderId,
@@ -83,7 +98,7 @@ const initiateKhalti = async (req, res) => {
       body: JSON.stringify({
         return_url: `${FRONTEND_URL}/payment/khalti/verify`,
         website_url: FRONTEND_URL,
-        amount: amountInPaisa,
+        amount: Math.round(acceptedBid.proposedPrice * 100), // Khalti uses paisa
         purchase_order_id: payment._id.toString(),
         purchase_order_name: `RouteFlow Order #${order.orderId}`,
         customer_info: {
@@ -105,22 +120,23 @@ const initiateKhalti = async (req, res) => {
 
     await Payment.findByIdAndUpdate(payment._id, { pidx: khaltiData.pidx });
 
-    res.json({
+    return res.status(200).json({
       success: true,
       paymentUrl: khaltiData.payment_url,
       pidx: khaltiData.pidx,
       paymentId: payment._id,
     });
-  } catch (err) {
-    console.error("initiateKhalti error:", err);
-    res
-      .status(err.status || 500)
-      .json({ success: false, message: err.message || "Server error" });
+  } catch (error) {
+    console.error("initiateKhalti error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
+// Verify Khalti payment status after redirect
 const verifyKhalti = async (req, res) => {
-  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY; // read lazily — ES Module dotenv timing fix
 
   try {
     const { pidx, paymentId } = req.query;
@@ -155,25 +171,25 @@ const verifyKhalti = async (req, res) => {
       transactionId: khaltiData.transaction_id || null,
     });
 
-    res.json({
+    return res.status(200).json({
       success: isCompleted,
       status: khaltiData.status,
       transactionId: khaltiData.transaction_id,
       amount: khaltiData.amount,
     });
-  } catch (err) {
-    console.error("verifyKhalti error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("verifyKhalti error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// Initiate an eSewa payment for a delivered order
 const initiateEsewa = async (req, res) => {
-  // Read lazily inside function — dotenv timing fix for ES Modules
-  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
+  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, ""); // read lazily
   const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
     /^"|"$/g,
     "",
-  );
+  ); // read lazily
 
   try {
     const { orderId } = req.body;
@@ -191,7 +207,6 @@ const initiateEsewa = async (req, res) => {
     }
 
     const amountStr = Number(acceptedBid.proposedPrice).toFixed(2);
-
     const payment = await Payment.create({
       orderId,
       payerId: req.user.id,
@@ -202,16 +217,13 @@ const initiateEsewa = async (req, res) => {
     });
 
     const transactionUuid = payment._id.toString();
-    const successUrl = `${FRONTEND_URL}/payment/esewa/verify?paymentId=${payment._id}`;
-    const failureUrl = `${FRONTEND_URL}/payment/failed?paymentId=${payment._id}`;
-
     const signatureString = `total_amount=${amountStr},transaction_uuid=${transactionUuid},product_code=${ESEWA_MERCHANT_CODE}`;
     const signature = crypto
       .createHmac("sha256", ESEWA_SECRET_KEY)
       .update(signatureString)
       .digest("base64");
 
-    res.json({
+    return res.status(200).json({
       success: true,
       paymentId: payment._id,
       formData: {
@@ -222,26 +234,27 @@ const initiateEsewa = async (req, res) => {
         product_code: ESEWA_MERCHANT_CODE,
         product_service_charge: "0",
         product_delivery_charge: "0",
-        success_url: successUrl,
-        failure_url: failureUrl,
+        success_url: `${FRONTEND_URL}/payment/esewa/verify?paymentId=${payment._id}`,
+        failure_url: `${FRONTEND_URL}/payment/failed?paymentId=${payment._id}`,
         signed_field_names: "total_amount,transaction_uuid,product_code",
         signature,
       },
       esewaUrl: `${ESEWA_BASE_URL}/api/epay/main/v2/form`,
     });
-  } catch (err) {
-    console.error("initiateEsewa error:", err);
-    res
-      .status(err.status || 500)
-      .json({ success: false, message: err.message || "Server error" });
+  } catch (error) {
+    console.error("initiateEsewa error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
+// Verify eSewa payment status after redirect
 const verifyEsewa = async (req, res) => {
   const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
     /^"|"$/g,
     "",
-  );
+  ); // read lazily
 
   try {
     const { data, paymentId } = req.query;
@@ -256,15 +269,10 @@ const verifyEsewa = async (req, res) => {
 
     if (decoded.status !== "COMPLETE") {
       await Payment.findByIdAndUpdate(paymentId, { status: "failed" });
-      return res.json({ success: false, status: decoded.status });
+      return res.status(200).json({ success: false, status: decoded.status });
     }
 
-    const verifyUrl = `${ESEWA_VERIFY_URL}?product_code=${encodeURIComponent(
-      ESEWA_MERCHANT_CODE,
-    )}&total_amount=${encodeURIComponent(
-      decoded.total_amount,
-    )}&transaction_uuid=${encodeURIComponent(decoded.transaction_uuid)}`;
-
+    const verifyUrl = `${ESEWA_VERIFY_URL}?product_code=${encodeURIComponent(ESEWA_MERCHANT_CODE)}&total_amount=${encodeURIComponent(decoded.total_amount)}&transaction_uuid=${encodeURIComponent(decoded.transaction_uuid)}`;
     const verifyRes = await fetch(verifyUrl, { method: "GET" });
     const verifyData = await verifyRes.json();
 
@@ -278,33 +286,44 @@ const verifyEsewa = async (req, res) => {
       transactionId: decoded.transaction_uuid || null,
     });
 
-    res.json({
+    return res.status(200).json({
       success: isCompleted,
       status: verifyData.status,
       transactionId: decoded.transaction_uuid,
       refId: decoded.transaction_code,
     });
-  } catch (err) {
-    console.error("verifyEsewa error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+  } catch (error) {
+    console.error("verifyEsewa error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+// Get all payments for the logged-in user (paginated)
 const getMyPayments = async (req, res) => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     const userId = req.user.id;
-    const payments = await Payment.find({
-      $or: [{ payerId: userId }, { receiverId: userId }],
-    })
-      .populate("orderId", "orderId productDetails routeFrom routeTo")
-      .populate("payerId", "companyName")
-      .populate("receiverId", "companyName")
-      .sort({ createdAt: -1 });
+    const filter = { $or: [{ payerId: userId }, { receiverId: userId }] };
 
-    res.json({ success: true, payments });
-  } catch (err) {
-    console.error("getMyPayments error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    const [payments, total] = await Promise.all([
+      Payment.find(filter)
+        .populate("orderId", "orderId productDetails routeFrom routeTo")
+        .populate("payerId", "companyName")
+        .populate("receiverId", "companyName")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Payment.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      payments,
+      pagination: buildPaginationMeta(total, page, limit),
+    });
+  } catch (error) {
+    console.error("getMyPayments error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

@@ -5,7 +5,7 @@ import {
   uploadDocuments,
   deleteDocument,
   submitForVerification,
-} from "../controllers/priceController.js";
+} from "../controllers/profileController.js";
 import { auth } from "../middleware/auth.js";
 import { uploadProfileFiles } from "../middleware/upload.js";
 
