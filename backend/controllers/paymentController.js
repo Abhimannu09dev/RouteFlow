@@ -6,23 +6,11 @@ import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
-
-//  Khalti Config
-const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
-console.log("KHALTI_SECRET_KEY:", KHALTI_SECRET_KEY);
 const KHALTI_INITIATE_URL = "https://dev.khalti.com/api/v2/epayment/initiate/";
 const KHALTI_LOOKUP_URL = "https://dev.khalti.com/api/v2/epayment/lookup/";
-
-//  eSewa Config ─
-const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
-const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
-  /^"|"$/g,
-  "",
-);
 const ESEWA_BASE_URL = "https://rc-epay.esewa.com.np";
 const ESEWA_VERIFY_URL = `${ESEWA_BASE_URL}/api/epay/transaction/status/`;
 
-//  Helper: verify order is delivered and user is manufacturer
 const resolvePayableOrder = async (orderId, userId) => {
   const order = await Order.findById(orderId).populate(
     "logistics",
@@ -58,6 +46,8 @@ const getPaymentStatus = async (req, res) => {
 };
 
 const initiateKhalti = async (req, res) => {
+  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+
   try {
     const { orderId } = req.body;
     const order = await resolvePayableOrder(orderId, req.user.id);
@@ -73,7 +63,6 @@ const initiateKhalti = async (req, res) => {
       });
     }
 
-    // Khalti uses paisa — 1 NPR = 100 paisa
     const amountInPaisa = Math.round(acceptedBid.proposedPrice * 100);
 
     const payment = await Payment.create({
@@ -131,6 +120,8 @@ const initiateKhalti = async (req, res) => {
 };
 
 const verifyKhalti = async (req, res) => {
+  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+
   try {
     const { pidx, paymentId } = req.query;
 
@@ -177,6 +168,13 @@ const verifyKhalti = async (req, res) => {
 };
 
 const initiateEsewa = async (req, res) => {
+  // Read lazily inside function — dotenv timing fix for ES Modules
+  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
+  const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
+    /^"|"$/g,
+    "",
+  );
+
   try {
     const { orderId } = req.body;
     const order = await resolvePayableOrder(orderId, req.user.id);
@@ -192,7 +190,6 @@ const initiateEsewa = async (req, res) => {
       });
     }
 
-    // eSewa RC requires decimal format e.g. "100000.00" not "100000"
     const amountStr = Number(acceptedBid.proposedPrice).toFixed(2);
 
     const payment = await Payment.create({
@@ -208,7 +205,6 @@ const initiateEsewa = async (req, res) => {
     const successUrl = `${FRONTEND_URL}/payment/esewa/verify?paymentId=${payment._id}`;
     const failureUrl = `${FRONTEND_URL}/payment/failed?paymentId=${payment._id}`;
 
-    // Signature: values must exactly match what is sent in form fields
     const signatureString = `total_amount=${amountStr},transaction_uuid=${transactionUuid},product_code=${ESEWA_MERCHANT_CODE}`;
     const signature = crypto
       .createHmac("sha256", ESEWA_SECRET_KEY)
@@ -242,6 +238,11 @@ const initiateEsewa = async (req, res) => {
 };
 
 const verifyEsewa = async (req, res) => {
+  const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
+    /^"|"$/g,
+    "",
+  );
+
   try {
     const { data, paymentId } = req.query;
 
@@ -251,7 +252,6 @@ const verifyEsewa = async (req, res) => {
         .json({ success: false, message: "Missing data or paymentId" });
     }
 
-    // Decode base64 response from eSewa
     const decoded = JSON.parse(Buffer.from(data, "base64").toString("utf-8"));
 
     if (decoded.status !== "COMPLETE") {
@@ -259,7 +259,6 @@ const verifyEsewa = async (req, res) => {
       return res.json({ success: false, status: decoded.status });
     }
 
-    // Verify with eSewa transaction status API
     const verifyUrl = `${ESEWA_VERIFY_URL}?product_code=${encodeURIComponent(
       ESEWA_MERCHANT_CODE,
     )}&total_amount=${encodeURIComponent(
