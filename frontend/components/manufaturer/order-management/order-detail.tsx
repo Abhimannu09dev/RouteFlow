@@ -3,14 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { orderAPI, priceOfferAPI, paymentAPI, type Payment } from "@/lib/api";
+import { orderAPI, priceOfferAPI } from "@/lib/api";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   Package,
   MapPin,
   ChevronRight,
-  Weight,
-  Hash,
   FileText,
   DollarSign,
   Clock,
@@ -25,7 +24,17 @@ import {
 } from "lucide-react";
 import PaymentModal from "@/components/shared/payment/PaymentModal";
 
-//  Types
+const RouteMapDisplay = dynamic(
+  () => import("@/components/shared/route-map-display"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-52 rounded-xl bg-[#F5F5F5] border border-[#E5E9EB] animate-pulse" />
+    ),
+  },
+);
+
+//  Types 
 
 type Order = {
   _id: string;
@@ -62,7 +71,7 @@ type Offer = {
   };
 };
 
-//  Sub-components
+//  Sub-components ─
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -151,7 +160,6 @@ function OfferCard({
             <p className="text-xs text-[#838383]">{offer.logistics.email}</p>
           </div>
         </div>
-
         <div className="flex flex-col items-end gap-1 shrink-0">
           {isLowest && !isAccepted && !isRejected && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full">
@@ -224,7 +232,7 @@ function OfferCard({
   );
 }
 
-//  Main Component
+//  Main Component ─
 
 export default function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter();
@@ -233,12 +241,6 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-
-  //  Payment state
-  const [payment, setPayment] = useState<Payment | null>(null);
-  const [showPayment, setShowPayment] = useState(false);
-
-  //  Fetch
 
   useEffect(() => {
     async function fetchData() {
@@ -250,28 +252,17 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
         setOrder(orderRes.order);
         setOffers(Array.isArray(offersRes.offers) ? offersRes.offers : []);
       } catch (error: unknown) {
-        toast.error(
+        const message =
           error instanceof Error
             ? error.message
-            : "Failed to load order details",
-        );
+            : "Failed to load order details";
+        toast.error(message);
       } finally {
         setIsLoading(false);
       }
     }
     fetchData();
   }, [orderId]);
-
-  // Fetch payment status separately once order loads
-  useEffect(() => {
-    if (!orderId) return;
-    paymentAPI
-      .getPaymentStatus(orderId)
-      .then((d) => setPayment(d.payment))
-      .catch(() => {});
-  }, [orderId]);
-
-  //  Accept offer
 
   async function handleAcceptOffer(offerId: string, companyName: string) {
     setAcceptingId(offerId);
@@ -285,23 +276,13 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
       setOrder(orderRes.order);
       setOffers(Array.isArray(offersRes.offers) ? offersRes.offers : []);
     } catch (error: unknown) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to accept offer",
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to accept offer";
+      toast.error(message);
     } finally {
       setAcceptingId(null);
     }
   }
-
-  // Refresh payment status after successful payment
-  async function handlePaymentSuccess() {
-    setShowPayment(false);
-    const d = await paymentAPI.getPaymentStatus(orderId);
-    setPayment(d.payment);
-    toast.success("Payment recorded successfully!");
-  }
-
-  //  Derived
 
   const pendingOffers = offers.filter((o) => o.status === "pending");
   const acceptedOffer = offers.find((o) => o.status === "accepted");
@@ -327,8 +308,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     });
   }
 
-  //  Loading
-
+  //  Loading skeleton 
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -361,47 +341,55 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     );
   }
 
-  //  Render
-
+  //  Render 
   return (
-    <>
-      <div className="max-w-4xl mx-auto flex flex-col gap-5">
-        {/* Back button */}
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-sm text-[#5B6871] hover:text-primary transition w-fit"
-        >
-          <ArrowLeft size={16} />
-          Back to Orders
-        </button>
+    <div className="max-w-4xl mx-auto flex flex-col gap-5">
+      {/* Back */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-2 text-sm text-[#5B6871] hover:text-primary transition w-fit"
+      >
+        <ArrowLeft size={16} />
+        Back to Orders
+      </button>
 
-        {/* Order header */}
-        <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-mono text-sm font-bold text-[#252C32]">
-                  {order.orderId}
-                </span>
-                <StatusBadge status={order.status} />
-              </div>
-              <p className="text-xs text-[#838383]">
-                Placed {formatDate(order.createdAt)}
-              </p>
+      {/* Order header */}
+      <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-mono text-sm font-bold text-[#252C32]">
+                {order.orderId}
+              </span>
+              <StatusBadge status={order.status} />
             </div>
           </div>
 
-          {/* Route */}
-          <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
-            <MapPin size={14} className="text-primary shrink-0" />
-            <span className="text-sm font-medium text-[#252C32]">
-              {order.routeFrom}
-            </span>
-            <ChevronRight size={14} className="text-[#838383]" />
-            <span className="text-sm font-medium text-[#252C32]">
-              {order.routeTo}
-            </span>
-          </div>
+        {/* Route pill */}
+        <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
+          <MapPin size={14} className="text-primary shrink-0" />
+          <span className="text-sm font-medium text-[#252C32]">
+            {order.routeFrom}
+          </span>
+          <ChevronRight size={14} className="text-[#838383]" />
+          <span className="text-sm font-medium text-[#252C32]">
+            {order.routeTo}
+          </span>
+        </div>
+
+        {/* Route map */}
+        <RouteMapDisplay from={order.routeFrom} to={order.routeTo} />
+
+        {/* Details grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+          <DetailRow label="Product" value={order.productDetails} />
+          <DetailRow label="Quantity" value={`${order.quantity} units`} />
+          <DetailRow label="Weight" value={`${order.weight} kg`} />
+          <DetailRow
+            label="Vehicle"
+            value={order.vehicleType.replace(/_/g, " ")}
+          />
+        </div>
 
           {/* Details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -414,105 +402,39 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
             />
           </div>
 
-          {/* Document requirements */}
-          {(order.invoiceNeeded || order.vatBillNeeded) && (
-            <div className="flex gap-2 mt-4">
-              {order.invoiceNeeded && (
-                <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                  <FileText size={11} /> Invoice Required
-                </span>
-              )}
-              {order.vatBillNeeded && (
-                <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                  <FileText size={11} /> VAT Bill Required
-                </span>
-              )}
+        {order.additionalInfo && (
+          <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
+            {order.additionalInfo}
+          </p>
+        )}
+
+        {/* Assigned partner */}
+        {order.logistics && (
+          <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+            <CheckCircle size={14} className="text-green-600 shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-green-700">
+                Logistics Partner Assigned
+              </p>
+              <p className="text-xs text-green-600">
+                {order.logistics.companyName} · {order.logistics.email}
+              </p>
             </div>
           )}
 
-          {order.additionalInfo && (
-            <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
-              {order.additionalInfo}
-            </p>
-          )}
-
-          {/* Assigned logistics partner */}
-          {order.logistics && (
-            <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
-              <CheckCircle size={14} className="text-green-600 shrink-0" />
-              <div>
-                <p className="text-xs font-semibold text-green-700">
-                  Logistics Partner Assigned
-                </p>
-                <p className="text-xs text-green-600">
-                  {order.logistics.companyName} · {order.logistics.email}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/*  Payment section  only shows for delivered orders  */}
-          {order.status === "delivered" && (
-            <div
-              className={`flex items-center justify-between gap-3 mt-4 px-4 py-3 rounded-xl border ${
-                isPaid
-                  ? "bg-green-50 border-green-200"
-                  : "bg-amber-50 border-amber-200"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {isPaid ? (
-                  <CheckCircle2 size={16} className="text-green-600 shrink-0" />
-                ) : (
-                  <CreditCard size={16} className="text-amber-600 shrink-0" />
-                )}
-                <div>
-                  <p
-                    className={`text-xs font-semibold ${isPaid ? "text-green-700" : "text-amber-700"}`}
-                  >
-                    {isPaid ? "Payment Completed" : "Payment Pending"}
-                  </p>
-                  {isPaid && payment?.transactionId && (
-                    <p className="text-[10px] text-green-600 mt-0.5 font-mono">
-                      Txn: {payment.transactionId}
-                    </p>
-                  )}
-                  {isPaid && (
-                    <p className="text-[10px] text-green-600 mt-0.5 capitalize">
-                      via {payment?.gateway}
-                      {payment?.amount
-                        ? ` · NPR ${payment.amount.toLocaleString()}`
-                        : ""}
-                    </p>
-                  )}
-                  {!isPaid && acceptedOffer && (
-                    <p className="text-[10px] text-amber-600 mt-0.5">
-                      Amount due: NPR{" "}
-                      {acceptedOffer.proposedPrice.toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {canPay && (
-                <button
-                  onClick={() => setShowPayment(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-semibold transition shrink-0"
-                >
-                  <CreditCard size={13} />
-                  Pay Now
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Expected price + offers summary */}
-        <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2">
-              <DollarSign size={16} className="text-primary" />
-              Price Overview
+      {/* Price overview */}
+      <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
+        <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2 mb-4">
+          <DollarSign size={16} className="text-primary" />
+          Price Overview
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+            <p className="text-xs text-[#838383]">Your Expected Price</p>
+            <p className="text-lg font-bold text-[#252C32] mt-0.5">
+              {order.expectedPrice
+                ? `NPR ${order.expectedPrice.toLocaleString()}`
+                : "Open bidding"}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -539,50 +461,19 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
           </div>
         </div>
 
-        {/* Offers section */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-[#252C32]">
-              Price Offers{" "}
-              <span className="text-[#838383] font-normal">
-                ({pendingOffers.length} pending)
-              </span>
-            </h2>
-            {canAccept && pendingOffers.length > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
-                <ShieldAlert size={13} />
-                Review and accept the best offer
-              </div>
-            )}
-          </div>
-
-          {offers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-[#E5E9EB] text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
-                <Package size={24} className="text-[#B0B7C3]" />
-              </div>
-              <p className="text-sm font-medium text-[#252C32]">No bids yet</p>
-              <p className="text-xs text-[#838383] mt-1">
-                Logistics companies will submit their price offers here
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {offers.map((offer) => (
-                <OfferCard
-                  key={offer._id}
-                  offer={offer}
-                  isLowest={
-                    offer.proposedPrice === lowestPrice &&
-                    offer.status === "pending"
-                  }
-                  canAccept={!!canAccept}
-                  isAccepting={acceptingId === offer._id}
-                  onAccept={() =>
-                    handleAcceptOffer(offer._id, offer.logistics.companyName)
-                  }
-                />
-              ))}
+      {/* Offers */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-[#252C32]">
+            Price Offers{" "}
+            <span className="text-[#838383] font-normal">
+              ({pendingOffers.length} pending)
+            </span>
+          </h2>
+          {canAccept && pendingOffers.length > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+              <ShieldAlert size={13} />
+              Review and accept the best offer
             </div>
           )}
         </div>
