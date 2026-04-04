@@ -1,7 +1,7 @@
-const Notification = require("../models/notificationModel");
+import Notification from "../models/notificationModel.js";
 
 //  Get notifications for current user
-async function getNotifications(req, res) {
+const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.user.id })
       .sort({ createdAt: -1 })
@@ -20,10 +20,10 @@ async function getNotifications(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 //  Mark single notification as read
-async function markAsRead(req, res) {
+const markAsRead = async (req, res) => {
   try {
     const { notificationId } = req.params;
 
@@ -40,10 +40,10 @@ async function markAsRead(req, res) {
       error: error.message,
     });
   }
-}
+};
 
 //  Mark all notifications as read
-async function markAllAsRead(req, res) {
+const markAllAsRead = async (req, res) => {
   try {
     await Notification.updateMany(
       { recipient: req.user.id, isRead: false },
@@ -60,6 +60,6 @@ async function markAllAsRead(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-module.exports = { getNotifications, markAsRead, markAllAsRead };
+export { getNotifications, markAsRead, markAllAsRead };

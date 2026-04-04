@@ -1,11 +1,11 @@
-const express = require("express");
-const router = express.Router();
-
-const {
+import { Router } from "express";
+import {
   getNotifications,
   markAsRead,
   markAllAsRead,
-} = require("../controllers/notificationController");
+} from "../controllers/notificationController.js";
+
+const router = Router();
 
 // auth applied in routes/index.js
 
@@ -13,4 +13,4 @@ router.get("/", getNotifications);
 router.put("/:notificationId/read", markAsRead);
 router.put("/read-all", markAllAsRead);
 
-module.exports = router;
+export default router;

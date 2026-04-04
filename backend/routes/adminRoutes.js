@@ -1,19 +1,19 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
 
-const { rolecheck } = require("../middleware/auth");
-const {
+import { rolecheck } from "../middleware/auth.js";
+import {
   getAdminStats,
   getAllUsers,
   getUserById,
   approveUser,
   rejectUser,
-} = require("../controllers/adminController");
-
-const {
+} from "../controllers/adminController.js";
+import {
   getAllTickets,
   updateTicket,
-} = require("../controllers/adminSupportController");
+} from "../controllers/adminSupportController.js";
+
+const router = Router();
 
 router.get("/stats", rolecheck(["admin"]), getAdminStats);
 router.get("/users", rolecheck(["admin"]), getAllUsers);
@@ -23,4 +23,4 @@ router.put("/users/:userId/reject", rolecheck(["admin"]), rejectUser);
 router.get("/support-tickets", rolecheck(["admin"]), getAllTickets);
 router.put("/support-tickets/:ticketId", rolecheck(["admin"]), updateTicket);
 
-module.exports = router;
+export default router;

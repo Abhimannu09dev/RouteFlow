@@ -1,5 +1,5 @@
-const bcrypt = require("bcrypt");
-const User = require("../models/userModel");
+import bcrypt from "bcrypt";
+import User from "../models/userModel.js";
 
 const getNotificationPreferences = async (req, res) => {
   try {
@@ -144,7 +144,7 @@ const deactivateAccount = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getNotificationPreferences,
   updateNotificationPreferences,
   changePassword,

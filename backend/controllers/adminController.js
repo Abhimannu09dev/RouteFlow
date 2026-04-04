@@ -1,7 +1,7 @@
-const User = require("../models/userModel");
-const Order = require("../models/orderModel");
+import User from "../models/userModel.js";
+import Order from "../models/orderModel.js";
 
-async function getAdminStats(req, res) {
+const getAdminStats = async (req, res) => {
   try {
     const [
       totalUsers,
@@ -47,9 +47,9 @@ async function getAdminStats(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-async function getAllUsers(req, res) {
+const getAllUsers = async (req, res) => {
   try {
     const { status, role, search } = req.query;
     const filter = { role: { $ne: "admin" } };
@@ -92,9 +92,9 @@ async function getAllUsers(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-async function getUserById(req, res) {
+const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -133,9 +133,9 @@ async function getUserById(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-async function approveUser(req, res) {
+const approveUser = async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -169,9 +169,9 @@ async function approveUser(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-async function rejectUser(req, res) {
+const rejectUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
@@ -213,12 +213,6 @@ async function rejectUser(req, res) {
       error: error.message,
     });
   }
-}
-
-module.exports = {
-  getAdminStats,
-  getAllUsers,
-  getUserById,
-  approveUser,
-  rejectUser,
 };
+
+export { getAdminStats, getAllUsers, getUserById, approveUser, rejectUser };

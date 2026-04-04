@@ -1,5 +1,5 @@
-const mongoose = require("mongoose");
-const { Schema } = mongoose;
+import mongoose from "mongoose";
+import { Schema } from "mongoose";
 
 const priceOfferSchema = new Schema({
   order: {
@@ -45,5 +45,4 @@ const priceOfferSchema = new Schema({
 
 priceOfferSchema.index({ order: 1, logistics: 1 }, { unique: true });
 
-const PriceOffer = mongoose.model("PriceOffer", priceOfferSchema);
-module.exports = PriceOffer;
+export default mongoose.model("PriceOffer", priceOfferSchema);

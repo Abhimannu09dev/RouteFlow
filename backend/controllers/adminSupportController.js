@@ -1,4 +1,4 @@
-const SupportTicket = require("../models/supportTicketModel");
+import SupportTicket from "../models/supportTicketModel.js";
 
 const getAllTickets = async (req, res) => {
   try {
@@ -60,4 +60,4 @@ const updateTicket = async (req, res) => {
   }
 };
 
-module.exports = { getAllTickets, updateTicket };
+export { getAllTickets, updateTicket };

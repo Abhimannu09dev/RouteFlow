@@ -1,14 +1,14 @@
-const Order = require("../models/orderModel");
-const crypto = require("crypto");
-const PriceOffer = require("../models/priceOfferModel");
-const {
+import Order from "../models/orderModel.js";
+import crypto from "crypto";
+import PriceOffer from "../models/priceOfferModel.js";
+import {
   notifyLogisticsNewOrder,
   notifyManufacturerOrderAccepted,
   notifyManufacturerStatusUpdate,
-} = require("../websocket/orderEvents");
+} from "../websocket/orderEvents.js";
 
-//  Create Order 
-async function createOrder(req, res) {
+//  Create Order
+const createOrder = async (req, res) => {
   try {
     if (req.user.role !== "manufacturer") {
       return res.status(403).json({
@@ -76,10 +76,10 @@ async function createOrder(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-//  Get Available Orders 
-async function getAvailableOrders(req, res) {
+//  Get Available Orders
+const getAvailableOrders = async (req, res) => {
   try {
     const role = req.user.role;
 
@@ -104,10 +104,10 @@ async function getAvailableOrders(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-//  Get My Orders 
-async function getMyOrders(req, res) {
+//  Get My Orders
+const getMyOrders = async (req, res) => {
   try {
     const role = req.user.role;
 
@@ -131,10 +131,10 @@ async function getMyOrders(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-//  Get Single Order Details 
-async function getOrderDetails(req, res) {
+//  Get Single Order Details
+const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
     const order = await Order.findOne({ orderId })
@@ -154,10 +154,10 @@ async function getOrderDetails(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-//  Accept Order directly (logistics only) 
-async function acceptOrder(req, res) {
+//  Accept Order directly (logistics only)
+const acceptOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const logisticsId = req.user.id;
@@ -194,10 +194,10 @@ async function acceptOrder(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-//  Update Order Status (logistics only) 
-async function updateOrderStatus(req, res) {
+//  Update Order Status (logistics only)
+const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
@@ -238,9 +238,9 @@ async function updateOrderStatus(req, res) {
       error: error.message,
     });
   }
-}
+};
 
-module.exports = {
+export {
   createOrder,
   getAvailableOrders,
   getMyOrders,

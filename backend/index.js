@@ -1,53 +1,63 @@
-require("dotenv").config();
+import dotenv from "dotenv";
+import express from "express";
+import http from "http";
+import mongoose from "mongoose";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import path from "path";
 
-const express = require("express");
-const http = require("http");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const cookieParser = require("cookie-parser");
-const path = require("path");
+dotenv.config();
 
-const { auth } = require("./middleware/auth");
-const { uploadProfileFiles } = require("./middleware/upload");
-const { initWebSocket } = require("./websocket"); // ← Socket.io setup
-const User = require("./models/userModel");
-const routes = require("./routes");
-
-//  App setup
 const app = express();
-const server = http.createServer(app); // http.Server needed for Socket.io
+const server = http.createServer(app);
 
+const uploadDir = path.resolve("uploads");
+
+// CORS options
+const corsOptions = {
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:5173",
+    process.env.FRONTEND_URL || "http://localhost:3000",
+  ],
+  credentials: true,
+};
+
+// Imports
+import { auth } from "./middleware/auth.js";
+import { initWebSocket } from "./websocket/index.js";
+import User from "./models/userModel.js";
+import routes from "./routes/index.js";
+
+// App config
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-//  Middleware
+// Middleware
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cors(corsOptions));
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:5173",
-      process.env.FRONTEND_URL || "http://localhost:3000",
-    ],
-    credentials: true,
-  }),
-);
+// Serve uploads folder (FIXED)
+app.use("/uploads", express.static(uploadDir));
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Test route
 app.get("/", (req, res) => {
   res.send("RouteFlow API is running");
 });
 
+// Auth route
 app.get("/auth/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
       "companyName email role isAccountVerified submittedForVerification",
     );
-    if (!user) return res.status(404).json({ error: "User not found" });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
     return res.status(200).json({
       id: user._id,
@@ -62,16 +72,21 @@ app.get("/auth/me", auth, async (req, res) => {
   }
 });
 
-//  Logout
+// Logout
 app.post("/auth/logout", (req, res) => {
-  res.clearCookie("token", { httpOnly: true, secure: false, sameSite: "lax" });
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: false, // set true in production (HTTPS)
+    sameSite: "lax",
+  });
+
   res.status(200).json({ message: "Logged out successfully" });
 });
 
-//  All other routes
+// Routes
 app.use("/", routes);
 
-//  Database + Server
+// DB + Server start
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");
   process.exit(1);
@@ -82,7 +97,7 @@ mongoose
   .then(() => {
     console.log("MongoDB connected");
 
-    // Initialize Socket.io AFTER DB is ready
+    // Initialize WebSocket
     initWebSocket(server);
 
     server.listen(PORT, () => {

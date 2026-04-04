@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { orderAPI, priceOfferAPI } from "@/lib/api";
+import dynamic from "next/dynamic";
 import {
   ArrowLeft,
   Package,
   MapPin,
   ChevronRight,
-  Truck,
-  Weight,
-  Hash,
   FileText,
   DollarSign,
   Clock,
@@ -23,7 +21,17 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
-//  Types
+const RouteMapDisplay = dynamic(
+  () => import("@/components/shared/route-map-display"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-52 rounded-xl bg-[#F5F5F5] border border-[#E5E9EB] animate-pulse" />
+    ),
+  },
+);
+
+//  Types 
 
 type Order = {
   _id: string;
@@ -60,7 +68,7 @@ type Offer = {
   };
 };
 
-//  Sub-components
+//  Sub-components ─
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -149,8 +157,6 @@ function OfferCard({
             <p className="text-xs text-[#838383]">{offer.logistics.email}</p>
           </div>
         </div>
-
-        {/* Badges */}
         <div className="flex flex-col items-end gap-1 shrink-0">
           {isLowest && !isAccepted && !isRejected && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full">
@@ -191,7 +197,6 @@ function OfferCard({
         </div>
       </div>
 
-      {/* Contact */}
       {offer.logistics.contactNumber && (
         <p className="text-xs text-[#838383] flex items-center gap-1 mb-2">
           <Phone size={11} />
@@ -199,7 +204,6 @@ function OfferCard({
         </p>
       )}
 
-      {/* Note */}
       {offer.note && (
         <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 mb-3 leading-relaxed">
           {offer.note}
@@ -210,7 +214,6 @@ function OfferCard({
         Submitted {formatDate(offer.createdAt)}
       </p>
 
-      {/* Accept button */}
       {canAccept && offer.status === "pending" && (
         <button
           onClick={onAccept}
@@ -229,7 +232,7 @@ function OfferCard({
   );
 }
 
-//  Main Component
+//  Main Component ─
 
 export default function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter();
@@ -238,8 +241,6 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
-
-  //  Fetch
 
   useEffect(() => {
     async function fetchData() {
@@ -250,8 +251,12 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
         ]);
         setOrder(orderRes.order);
         setOffers(Array.isArray(offersRes.offers) ? offersRes.offers : []);
-      } catch (error: any) {
-        toast.error(error.message || "Failed to load order details");
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load order details";
+        toast.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -259,29 +264,25 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     fetchData();
   }, [orderId]);
 
-  //  Accept offer
-
   async function handleAcceptOffer(offerId: string, companyName: string) {
     setAcceptingId(offerId);
     try {
       await priceOfferAPI.acceptOffer(orderId, offerId);
       toast.success(`Offer from ${companyName} accepted! Order confirmed.`);
-
-      // Refresh data
       const [orderRes, offersRes] = await Promise.all([
         orderAPI.getOrderDetails(orderId),
         priceOfferAPI.getOffers(orderId),
       ]);
       setOrder(orderRes.order);
       setOffers(Array.isArray(offersRes.offers) ? offersRes.offers : []);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to accept offer");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to accept offer";
+      toast.error(message);
     } finally {
       setAcceptingId(null);
     }
   }
-
-  //  Derived
 
   const pendingOffers = offers.filter((o) => o.status === "pending");
   const lowestPrice =
@@ -298,8 +299,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     });
   }
 
-  //  Loading
-
+  //  Loading skeleton 
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -332,11 +332,10 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     );
   }
 
-  //  Render
-
+  //  Render 
   return (
     <div className="max-w-4xl mx-auto flex flex-col gap-5">
-      {/* Back button */}
+      {/* Back */}
       <button
         onClick={() => router.back()}
         className="flex items-center gap-2 text-sm text-[#5B6871] hover:text-primary transition w-fit"
@@ -361,7 +360,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
           </div>
         </div>
 
-        {/* Route */}
+        {/* Route pill */}
         <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
           <MapPin size={14} className="text-primary shrink-0" />
           <span className="text-sm font-medium text-[#252C32]">
@@ -373,8 +372,11 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
           </span>
         </div>
 
+        {/* Route map */}
+        <RouteMapDisplay from={order.routeFrom} to={order.routeTo} />
+
         {/* Details grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
           <DetailRow label="Product" value={order.productDetails} />
           <DetailRow label="Quantity" value={`${order.quantity} units`} />
           <DetailRow label="Weight" value={`${order.weight} kg`} />
@@ -402,14 +404,13 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {/* Additional info */}
         {order.additionalInfo && (
           <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
             {order.additionalInfo}
           </p>
         )}
 
-        {/* Assigned logistics partner */}
+        {/* Assigned partner */}
         {order.logistics && (
           <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
             <CheckCircle size={14} className="text-green-600 shrink-0" />
@@ -425,15 +426,12 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
         )}
       </div>
 
-      {/* Expected price + offers summary */}
+      {/* Price overview */}
       <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2">
-            <DollarSign size={16} className="text-primary" />
-            Price Overview
-          </p>
-        </div>
-
+        <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2 mb-4">
+          <DollarSign size={16} className="text-primary" />
+          Price Overview
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
             <p className="text-xs text-[#838383]">Your Expected Price</p>
@@ -458,7 +456,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      {/* Offers section */}
+      {/* Offers */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-[#252C32]">
