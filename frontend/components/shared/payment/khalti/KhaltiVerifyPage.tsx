@@ -1,9 +1,9 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
-import { paymentAPI } from "@/lib/api";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export default function KhaltiVerifyContent() {
   const searchParams = useSearchParams();
@@ -15,31 +15,53 @@ export default function KhaltiVerifyContent() {
   const [transactionId, setTransactionId] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const verifyPayment = async () => {
       const pidx = searchParams.get("pidx");
-      const paymentId = searchParams.get("paymentId");
+      const paymentId = searchParams.get("purchase_order_id");
+      const khaltiStatus = searchParams.get("status");
 
-      // Early exit if params are missing
+      // Validate params first (no immediate setState)
       if (!pidx || !paymentId) {
-        setStatus("failed");
+        if (isMounted) setStatus("failed");
+        return;
+      }
+
+      if (khaltiStatus !== "Completed") {
+        if (isMounted) setStatus("failed");
         return;
       }
 
       try {
-        const res = await paymentAPI.verifyKhalti(pidx, paymentId);
-        if (res.success) {
+        const res = await fetch(
+          `${API_BASE}/payment/khalti/verify?pidx=${pidx}&paymentId=${paymentId}`,
+          {
+            credentials: "include",
+          },
+        );
+
+        const data = await res.json();
+
+        if (!isMounted) return;
+
+        if (data.success) {
           setStatus("success");
-          setTransactionId(res.transactionId);
+          setTransactionId(data.transactionId || pidx);
         } else {
           setStatus("failed");
         }
-      } catch {
-        // no unused variable
-        setStatus("failed");
+      } catch (error) {
+        if (isMounted) setStatus("failed");
       }
     };
 
-    verifyPayment();
+    // Defer execution to avoid synchronous state update warning
+    Promise.resolve().then(verifyPayment);
+
+    return () => {
+      isMounted = false;
+    };
   }, [searchParams]);
 
   return (
@@ -65,6 +87,7 @@ export default function KhaltiVerifyContent() {
             <p className="text-sm text-[#9AA6AC]">
               Your Khalti payment has been verified and recorded.
             </p>
+
             {transactionId && (
               <div className="bg-[#F8FAFB] rounded-xl px-4 py-3 w-full">
                 <p className="text-xs text-[#9AA6AC]">Transaction ID</p>
@@ -73,6 +96,7 @@ export default function KhaltiVerifyContent() {
                 </p>
               </div>
             )}
+
             <button
               onClick={() => router.push("/manufacturer/order-management")}
               className="w-full h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium transition"
@@ -91,6 +115,7 @@ export default function KhaltiVerifyContent() {
             <p className="text-sm text-[#9AA6AC]">
               Your Khalti payment could not be verified. Please try again.
             </p>
+
             <button
               onClick={() => router.push("/manufacturer/order-management")}
               className="w-full h-10 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-sm font-medium transition"

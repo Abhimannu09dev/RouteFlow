@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { orderAPI, priceOfferAPI } from "@/lib/api";
+import { orderAPI, priceOfferAPI, paymentAPI } from "@/lib/api";
+import Image from "next/image";
 import dynamic from "next/dynamic";
 import {
   ArrowLeft,
@@ -19,7 +20,9 @@ import {
   Loader2,
   Phone,
   ShieldAlert,
+  CreditCard,
 } from "lucide-react";
+import PaymentModal from "@/components/shared/payment/PaymentModal";
 
 const RouteMapDisplay = dynamic(
   () => import("@/components/shared/route-map-display"),
@@ -30,8 +33,6 @@ const RouteMapDisplay = dynamic(
     ),
   },
 );
-
-//  Types 
 
 type Order = {
   _id: string;
@@ -50,7 +51,7 @@ type Order = {
   createdAt: string;
   updatedAt: string;
   manufacturer: { companyName: string; email: string };
-  logistics?: { companyName: string; email: string } | null;
+  logistics?: { _id: string; companyName: string; email: string } | null;
 };
 
 type Offer = {
@@ -68,7 +69,11 @@ type Offer = {
   };
 };
 
-//  Sub-components ─
+type Payment = {
+  status: string;
+  amount: number;
+  method?: string;
+} | null;
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
@@ -139,12 +144,13 @@ function OfferCard({
       {/* Company row */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="w-10 h-10 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0 overflow-hidden relative">
             {offer.logistics.companyLogo ? (
-              <img
+              <Image
                 src={offer.logistics.companyLogo}
-                alt=""
-                className="w-full h-full object-cover"
+                alt={offer.logistics.companyName}
+                fill
+                className="object-cover"
               />
             ) : (
               <Building2 size={16} className="text-[#B0B7C3]" />
@@ -160,14 +166,12 @@ function OfferCard({
         <div className="flex flex-col items-end gap-1 shrink-0">
           {isLowest && !isAccepted && !isRejected && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full">
-              <Trophy size={9} />
-              Best Price
+              <Trophy size={9} /> Best Price
             </span>
           )}
           {isAccepted && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">
-              <CheckCircle size={9} />
-              Accepted
+              <CheckCircle size={9} /> Accepted
             </span>
           )}
           {isRejected && (
@@ -199,8 +203,7 @@ function OfferCard({
 
       {offer.logistics.contactNumber && (
         <p className="text-xs text-[#838383] flex items-center gap-1 mb-2">
-          <Phone size={11} />
-          {offer.logistics.contactNumber}
+          <Phone size={11} /> {offer.logistics.contactNumber}
         </p>
       )}
 
@@ -232,15 +235,17 @@ function OfferCard({
   );
 }
 
-//  Main Component ─
+//  Main Component
 
 export default function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
+  const [payment, setPayment] = useState<Payment>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [showPayment, setShowPayment] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -251,6 +256,15 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
         ]);
         setOrder(orderRes.order);
         setOffers(Array.isArray(offersRes.offers) ? offersRes.offers : []);
+
+        if (orderRes.order?.status === "delivered") {
+          try {
+            const paymentRes = await paymentAPI.getPaymentStatus(orderId);
+            setPayment(paymentRes.payment ?? null);
+          } catch {
+            setPayment(null);
+          }
+        }
       } catch (error: unknown) {
         const message =
           error instanceof Error
@@ -284,12 +298,30 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     }
   }
 
+  async function handlePaymentSuccess() {
+    setShowPayment(false);
+    toast.success("Payment completed successfully!");
+    try {
+      const paymentRes = await paymentAPI.getPaymentStatus(orderId);
+      setPayment(paymentRes.payment ?? null);
+    } catch {
+      // ignore
+    }
+  }
+
+  //  Derived
   const pendingOffers = offers.filter((o) => o.status === "pending");
+  const acceptedOffer = offers.find((o) => o.status === "accepted");
   const lowestPrice =
     pendingOffers.length > 0
       ? Math.min(...pendingOffers.map((o) => o.proposedPrice))
       : null;
   const canAccept = order?.status === "pending";
+  const canPay =
+    order?.status === "delivered" &&
+    acceptedOffer &&
+    payment?.status !== "completed";
+  const isPaid = payment?.status === "completed";
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-NP", {
@@ -299,7 +331,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     });
   }
 
-  //  Loading skeleton 
+  //  Loading skeleton
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto flex flex-col gap-5">
@@ -332,177 +364,216 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
     );
   }
 
-  //  Render 
+  //  Render
   return (
-    <div className="max-w-4xl mx-auto flex flex-col gap-5">
-      {/* Back */}
-      <button
-        onClick={() => router.back()}
-        className="flex items-center gap-2 text-sm text-[#5B6871] hover:text-primary transition w-fit"
-      >
-        <ArrowLeft size={16} />
-        Back to Orders
-      </button>
+    <>
+      <div className="max-w-4xl mx-auto flex flex-col gap-5">
+        {/* Back */}
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-sm text-[#5B6871] hover:text-primary transition w-fit"
+        >
+          <ArrowLeft size={16} />
+          Back to Orders
+        </button>
 
-      {/* Order header */}
-      <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-sm font-bold text-[#252C32]">
-                {order.orderId}
-              </span>
-              <StatusBadge status={order.status} />
-            </div>
-            <p className="text-xs text-[#838383]">
-              Placed {formatDate(order.createdAt)}
-            </p>
-          </div>
-        </div>
-
-        {/* Route pill */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
-          <MapPin size={14} className="text-primary shrink-0" />
-          <span className="text-sm font-medium text-[#252C32]">
-            {order.routeFrom}
-          </span>
-          <ChevronRight size={14} className="text-[#838383]" />
-          <span className="text-sm font-medium text-[#252C32]">
-            {order.routeTo}
-          </span>
-        </div>
-
-        {/* Route map */}
-        <RouteMapDisplay from={order.routeFrom} to={order.routeTo} />
-
-        {/* Details grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
-          <DetailRow label="Product" value={order.productDetails} />
-          <DetailRow label="Quantity" value={`${order.quantity} units`} />
-          <DetailRow label="Weight" value={`${order.weight} kg`} />
-          <DetailRow
-            label="Vehicle"
-            value={order.vehicleType.replace(/_/g, " ")}
-          />
-        </div>
-
-        {/* Document requirements */}
-        {(order.invoiceNeeded || order.vatBillNeeded) && (
-          <div className="flex gap-2 mt-4">
-            {order.invoiceNeeded && (
-              <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                <FileText size={11} />
-                Invoice Required
-              </span>
-            )}
-            {order.vatBillNeeded && (
-              <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                <FileText size={11} />
-                VAT Bill Required
-              </span>
-            )}
-          </div>
-        )}
-
-        {order.additionalInfo && (
-          <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
-            {order.additionalInfo}
-          </p>
-        )}
-
-        {/* Assigned partner */}
-        {order.logistics && (
-          <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
-            <CheckCircle size={14} className="text-green-600 shrink-0" />
+        {/* Order header */}
+        <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-xs font-semibold text-green-700">
-                Logistics Partner Assigned
-              </p>
-              <p className="text-xs text-green-600">
-                {order.logistics.companyName} · {order.logistics.email}
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-sm font-bold text-[#252C32]">
+                  {order.orderId}
+                </span>
+                <StatusBadge status={order.status} />
+              </div>
+              <p className="text-xs text-[#838383]">
+                Placed {formatDate(order.createdAt)}
               </p>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Price overview */}
-      <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
-        <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2 mb-4">
-          <DollarSign size={16} className="text-primary" />
-          Price Overview
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
-            <p className="text-xs text-[#838383]">Your Expected Price</p>
-            <p className="text-lg font-bold text-[#252C32] mt-0.5">
-              {order.expectedPrice
-                ? `NPR ${order.expectedPrice.toLocaleString()}`
-                : "Open bidding"}
-            </p>
-          </div>
-          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
-            <p className="text-xs text-[#838383]">Total Bids</p>
-            <p className="text-lg font-bold text-[#252C32] mt-0.5">
-              {offers.length}
-            </p>
-          </div>
-          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
-            <p className="text-xs text-[#838383]">Lowest Bid</p>
-            <p className="text-lg font-bold text-green-600 mt-0.5">
-              {lowestPrice ? `NPR ${lowestPrice.toLocaleString()}` : "—"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Offers */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-[#252C32]">
-            Price Offers{" "}
-            <span className="text-[#838383] font-normal">
-              ({pendingOffers.length} pending)
+          {/* Route pill */}
+          <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
+            <MapPin size={14} className="text-primary shrink-0" />
+            <span className="text-sm font-medium text-[#252C32]">
+              {order.routeFrom}
             </span>
-          </h2>
-          {canAccept && pendingOffers.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
-              <ShieldAlert size={13} />
-              Review and accept the best offer
+            <ChevronRight size={14} className="text-[#838383]" />
+            <span className="text-sm font-medium text-[#252C32]">
+              {order.routeTo}
+            </span>
+          </div>
+
+          {/* Route map */}
+          <RouteMapDisplay from={order.routeFrom} to={order.routeTo} />
+
+          {/* Details grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+            <DetailRow label="Product" value={order.productDetails} />
+            <DetailRow label="Quantity" value={`${order.quantity} units`} />
+            <DetailRow label="Weight" value={`${order.weight} kg`} />
+            <DetailRow
+              label="Vehicle"
+              value={order.vehicleType.replace(/_/g, " ")}
+            />
+          </div>
+
+          {/* Document requirements */}
+          {(order.invoiceNeeded || order.vatBillNeeded) && (
+            <div className="flex gap-2 mt-4">
+              {order.invoiceNeeded && (
+                <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
+                  <FileText size={11} /> Invoice Required
+                </span>
+              )}
+              {order.vatBillNeeded && (
+                <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
+                  <FileText size={11} /> VAT Bill Required
+                </span>
+              )}
+            </div>
+          )}
+
+          {order.additionalInfo && (
+            <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
+              {order.additionalInfo}
+            </p>
+          )}
+
+          {/* Assigned logistics partner */}
+          {order.logistics && (
+            <div className="flex items-center gap-2 mt-4 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+              <CheckCircle size={14} className="text-green-600 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-green-700">
+                  Logistics Partner Assigned
+                </p>
+                <p className="text-xs text-green-600">
+                  {order.logistics.companyName} · {order.logistics.email}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Payment section */}
+          {order.status === "delivered" && (
+            <div className="mt-4">
+              {isPaid ? (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-green-50 border border-green-200 rounded-xl">
+                  <CheckCircle size={14} className="text-green-600 shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-green-700">
+                      Payment Completed
+                    </p>
+                    <p className="text-xs text-green-600">
+                      NPR {payment?.amount?.toLocaleString()} via{" "}
+                      {payment?.method}
+                    </p>
+                  </div>
+                </div>
+              ) : canPay ? (
+                <button
+                  onClick={() => setShowPayment(true)}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary-dark text-white text-sm font-medium rounded-xl transition"
+                >
+                  <CreditCard size={15} />
+                  Pay Now — NPR {acceptedOffer?.proposedPrice?.toLocaleString()}
+                </button>
+              ) : null}
             </div>
           )}
         </div>
 
-        {offers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-[#E5E9EB] text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
-              <Package size={24} className="text-[#B0B7C3]" />
+        {/* Price overview */}
+        <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
+          <p className="text-sm font-semibold text-[#252C32] flex items-center gap-2 mb-4">
+            <DollarSign size={16} className="text-primary" />
+            Price Overview
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Your Expected Price</p>
+              <p className="text-lg font-bold text-[#252C32] mt-0.5">
+                {order.expectedPrice
+                  ? `NPR ${order.expectedPrice.toLocaleString()}`
+                  : "Open bidding"}
+              </p>
             </div>
-            <p className="text-sm font-medium text-[#252C32]">No bids yet</p>
-            <p className="text-xs text-[#838383] mt-1">
-              Logistics companies will submit their price offers here
-            </p>
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Total Bids</p>
+              <p className="text-lg font-bold text-[#252C32] mt-0.5">
+                {offers.length}
+              </p>
+            </div>
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Lowest Bid</p>
+              <p className="text-lg font-bold text-green-600 mt-0.5">
+                {lowestPrice ? `NPR ${lowestPrice.toLocaleString()}` : "—"}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {offers.map((offer) => (
-              <OfferCard
-                key={offer._id}
-                offer={offer}
-                isLowest={
-                  offer.proposedPrice === lowestPrice &&
-                  offer.status === "pending"
-                }
-                canAccept={!!canAccept}
-                isAccepting={acceptingId === offer._id}
-                onAccept={() =>
-                  handleAcceptOffer(offer._id, offer.logistics.companyName)
-                }
-              />
-            ))}
+        </div>
+
+        {/* Offers */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-[#252C32]">
+              Price Offers{" "}
+              <span className="text-[#838383] font-normal">
+                ({pendingOffers.length} pending)
+              </span>
+            </h2>
+            {canAccept && pendingOffers.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl">
+                <ShieldAlert size={13} />
+                Review and accept the best offer
+              </div>
+            )}
           </div>
-        )}
+
+          {offers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-[#E5E9EB] text-center">
+              <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
+                <Package size={24} className="text-[#B0B7C3]" />
+              </div>
+              <p className="text-sm font-medium text-[#252C32]">No bids yet</p>
+              <p className="text-xs text-[#838383] mt-1">
+                Logistics companies will submit their price offers here
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {offers.map((offer) => (
+                <OfferCard
+                  key={offer._id}
+                  offer={offer}
+                  isLowest={
+                    offer.proposedPrice === lowestPrice &&
+                    offer.status === "pending"
+                  }
+                  canAccept={!!canAccept}
+                  isAccepting={acceptingId === offer._id}
+                  onAccept={() =>
+                    handleAcceptOffer(offer._id, offer.logistics.companyName)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* Payment modal — outside main div so it overlays everything */}
+      {showPayment && acceptedOffer && (
+        <PaymentModal
+          orderId={order._id}
+          orderTitle={order.productDetails}
+          amount={acceptedOffer.proposedPrice}
+          onClose={() => setShowPayment(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
+    </>
   );
 }

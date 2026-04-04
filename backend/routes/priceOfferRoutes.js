@@ -5,23 +5,24 @@ import {
   updateOffer,
   withdrawOffer,
   acceptOffer,
+  getMyOffers,
 } from "../controllers/priceOfferController.js";
 import { rolecheck } from "../middleware/auth.js";
 
 const router = Router();
 
-router.post("/:orderId/offers", rolecheck(["logistics"]), submitOffer);
+router.get("/my-offers", rolecheck(["logistics"]), getMyOffers);
+
 router.get("/:orderId/offers", getOffers);
-router.put("/:orderId/offers/:offerId", rolecheck(["logistics"]), updateOffer);
-router.delete(
-  "/:orderId/offers/:offerId",
-  rolecheck(["logistics"]),
-  withdrawOffer,
-);
 router.put(
   "/:orderId/offers/:offerId/accept",
   rolecheck(["manufacturer"]),
   acceptOffer,
 );
+
+router.use(rolecheck(["logistics"]));
+router.post("/:orderId/offers", submitOffer);
+router.put("/:orderId/offers/:offerId", updateOffer);
+router.delete("/:orderId/offers/:offerId", withdrawOffer);
 
 export default router;

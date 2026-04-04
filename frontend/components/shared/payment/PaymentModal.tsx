@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { paymentAPI } from "@/lib/api";
+import Image from "next/image";
 
 interface PaymentModalProps {
   orderId: string;
@@ -115,9 +116,7 @@ export default function PaymentModal({
                   : "border-[#E5E9EB] hover:border-purple-200 hover:bg-purple-50/30"
               }`}
             >
-              <div className="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-sm">K</span>
-              </div>
+              <Image src="/khalti.png" alt="Khalti" width={24} height={24} />
               <div className="text-left flex-1">
                 <p className="text-sm font-semibold text-[#252C32]">Khalti</p>
                 <p className="text-xs text-[#9AA6AC]">
@@ -138,9 +137,7 @@ export default function PaymentModal({
                   : "border-[#E5E9EB] hover:border-green-200 hover:bg-green-50/30"
               }`}
             >
-              <div className="w-12 h-12 rounded-xl bg-green-600 flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-sm">e</span>
-              </div>
+              <Image src="/esewa.png" alt="eSewa" width={24} height={24} />
               <div className="text-left flex-1">
                 <p className="text-sm font-semibold text-[#252C32]">eSewa</p>
                 <p className="text-xs text-[#9AA6AC]">
