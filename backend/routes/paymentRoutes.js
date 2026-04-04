@@ -5,6 +5,7 @@ import {
   verifyKhalti,
   initiateEsewa,
   verifyEsewa,
+  getMyPayments,
 } from "../controllers/paymentController.js";
 
 const router = Router();
@@ -23,5 +24,7 @@ router.post("/esewa/initiate", initiateEsewa);
 
 // verify after eSewa redirect
 router.get("/esewa/verify", verifyEsewa);
+
+router.get("/my-payments", getMyPayments);
 
 export default router;

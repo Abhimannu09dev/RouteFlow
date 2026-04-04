@@ -19,7 +19,10 @@ import {
   Loader2,
   Phone,
   ShieldAlert,
+  CreditCard,
+  CheckCircle2,
 } from "lucide-react";
+import PaymentModal from "@/components/shared/payment/PaymentModal";
 
 const RouteMapDisplay = dynamic(
   () => import("@/components/shared/route-map-display"),
@@ -50,7 +53,7 @@ type Order = {
   createdAt: string;
   updatedAt: string;
   manufacturer: { companyName: string; email: string };
-  logistics?: { companyName: string; email: string } | null;
+  logistics?: { _id: string; companyName: string; email: string } | null;
 };
 
 type Offer = {
@@ -160,14 +163,12 @@ function OfferCard({
         <div className="flex flex-col items-end gap-1 shrink-0">
           {isLowest && !isAccepted && !isRejected && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary text-white text-[10px] font-bold rounded-full">
-              <Trophy size={9} />
-              Best Price
+              <Trophy size={9} /> Best Price
             </span>
           )}
           {isAccepted && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full">
-              <CheckCircle size={9} />
-              Accepted
+              <CheckCircle size={9} /> Accepted
             </span>
           )}
           {isRejected && (
@@ -199,8 +200,7 @@ function OfferCard({
 
       {offer.logistics.contactNumber && (
         <p className="text-xs text-[#838383] flex items-center gap-1 mb-2">
-          <Phone size={11} />
-          {offer.logistics.contactNumber}
+          <Phone size={11} /> {offer.logistics.contactNumber}
         </p>
       )}
 
@@ -285,11 +285,20 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
   }
 
   const pendingOffers = offers.filter((o) => o.status === "pending");
+  const acceptedOffer = offers.find((o) => o.status === "accepted");
   const lowestPrice =
     pendingOffers.length > 0
       ? Math.min(...pendingOffers.map((o) => o.proposedPrice))
       : null;
   const canAccept = order?.status === "pending";
+
+  // Show Pay Now when: delivered + has accepted bid + not yet paid
+  const canPay =
+    order?.status === "delivered" &&
+    acceptedOffer &&
+    payment?.status !== "completed";
+
+  const isPaid = payment?.status === "completed";
 
   function formatDate(d: string) {
     return new Date(d).toLocaleDateString("en-NP", {
@@ -354,11 +363,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
               </span>
               <StatusBadge status={order.status} />
             </div>
-            <p className="text-xs text-[#838383]">
-              Placed {formatDate(order.createdAt)}
-            </p>
           </div>
-        </div>
 
         {/* Route pill */}
         <div className="flex items-center gap-2 px-4 py-3 bg-primary/5 rounded-xl border border-primary/20 mb-4">
@@ -386,23 +391,16 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
           />
         </div>
 
-        {/* Document requirements */}
-        {(order.invoiceNeeded || order.vatBillNeeded) && (
-          <div className="flex gap-2 mt-4">
-            {order.invoiceNeeded && (
-              <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                <FileText size={11} />
-                Invoice Required
-              </span>
-            )}
-            {order.vatBillNeeded && (
-              <span className="text-xs px-2.5 py-1 bg-[#F5F5F5] border border-[#E5E9EB] rounded-lg text-[#5B6871] flex items-center gap-1">
-                <FileText size={11} />
-                VAT Bill Required
-              </span>
-            )}
+          {/* Details grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <DetailRow label="Product" value={order.productDetails} />
+            <DetailRow label="Quantity" value={`${order.quantity} units`} />
+            <DetailRow label="Weight" value={`${order.weight} kg`} />
+            <DetailRow
+              label="Vehicle"
+              value={order.vehicleType.replace(/_/g, " ")}
+            />
           </div>
-        )}
 
         {order.additionalInfo && (
           <p className="text-xs text-[#838383] bg-[#F5F5F5] rounded-xl px-3 py-2 mt-4 leading-relaxed">
@@ -422,9 +420,7 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
                 {order.logistics.companyName} · {order.logistics.email}
               </p>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
       {/* Price overview */}
       <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
@@ -441,20 +437,29 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
                 : "Open bidding"}
             </p>
           </div>
-          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
-            <p className="text-xs text-[#838383]">Total Bids</p>
-            <p className="text-lg font-bold text-[#252C32] mt-0.5">
-              {offers.length}
-            </p>
-          </div>
-          <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
-            <p className="text-xs text-[#838383]">Lowest Bid</p>
-            <p className="text-lg font-bold text-green-600 mt-0.5">
-              {lowestPrice ? `NPR ${lowestPrice.toLocaleString()}` : "—"}
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Your Expected Price</p>
+              <p className="text-lg font-bold text-[#252C32] mt-0.5">
+                {order.expectedPrice
+                  ? `NPR ${order.expectedPrice.toLocaleString()}`
+                  : "Open bidding"}
+              </p>
+            </div>
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Total Bids</p>
+              <p className="text-lg font-bold text-[#252C32] mt-0.5">
+                {offers.length}
+              </p>
+            </div>
+            <div className="px-4 py-3 bg-[#F5F5F5] rounded-xl">
+              <p className="text-xs text-[#838383]">Lowest Bid</p>
+              <p className="text-lg font-bold text-green-600 mt-0.5">
+                {lowestPrice ? `NPR ${lowestPrice.toLocaleString()}` : ""}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
       {/* Offers */}
       <div>
@@ -472,37 +477,18 @@ export default function OrderDetail({ orderId }: { orderId: string }) {
             </div>
           )}
         </div>
-
-        {offers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 bg-white rounded-2xl border border-[#E5E9EB] text-center">
-            <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
-              <Package size={24} className="text-[#B0B7C3]" />
-            </div>
-            <p className="text-sm font-medium text-[#252C32]">No bids yet</p>
-            <p className="text-xs text-[#838383] mt-1">
-              Logistics companies will submit their price offers here
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {offers.map((offer) => (
-              <OfferCard
-                key={offer._id}
-                offer={offer}
-                isLowest={
-                  offer.proposedPrice === lowestPrice &&
-                  offer.status === "pending"
-                }
-                canAccept={!!canAccept}
-                isAccepting={acceptingId === offer._id}
-                onAccept={() =>
-                  handleAcceptOffer(offer._id, offer.logistics.companyName)
-                }
-              />
-            ))}
-          </div>
-        )}
       </div>
-    </div>
+
+      {/* Payment modal  rendered outside main div so it overlays everything */}
+      {showPayment && acceptedOffer && (
+        <PaymentModal
+          orderId={order._id}
+          orderTitle={order.productDetails}
+          amount={acceptedOffer.proposedPrice}
+          onClose={() => setShowPayment(false)}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
+    </>
   );
 }
