@@ -3,10 +3,9 @@ import Message from "../models/messageModel.js";
 import Order from "../models/orderModel.js";
 import { getIO } from "../websocket/index.js";
 
-// Statuses where chat is accessible
 const CHAT_ALLOWED_STATUSES = ["accepted", "in transit", "delivered"];
 
-// Verify the requesting user is a participant of the order and chat is accessible
+// Verify the requesting user is a participant and chat is accessible for this order
 const resolveOrderForChat = async (orderId, userId) => {
   const order = await Order.findById(orderId);
   if (!order) {
@@ -14,30 +13,26 @@ const resolveOrderForChat = async (orderId, userId) => {
     err.status = 404;
     throw err;
   }
-
   if (!CHAT_ALLOWED_STATUSES.includes(order.status)) {
     const err = new Error("Chat is not available for this order status");
     err.status = 403;
     throw err;
   }
 
-  const manufacturerId = order.manufacturer?.toString();
-  const logisticsId = order.logistics?.toString();
   const uid = userId.toString();
-
-  if (uid !== manufacturerId && uid !== logisticsId) {
+  if (
+    uid !== order.manufacturer?.toString() &&
+    uid !== order.logistics?.toString()
+  ) {
     const err = new Error("You are not a participant of this order");
     err.status = 403;
     throw err;
   }
 
-  return {
-    order,
-    isClosed: order.status === "delivered",
-  };
+  return { order, isClosed: order.status === "delivered" };
 };
 
-// List all chat-eligible orders for the logged-in user, with last message, unread count.
+// List all chat-eligible orders for the logged-in user with last message and unread count
 const getConversations = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -70,7 +65,6 @@ const getConversations = async (req, res) => {
 
         return {
           orderId: order._id,
-          // Use cargoType as title — adjust field name if yours differs
           orderTitle:
             order.productDetails ||
             `Order #${order.orderId || order._id.toString().slice(-6)}`,
@@ -91,16 +85,16 @@ const getConversations = async (req, res) => {
       }),
     );
 
-    res.json({ success: true, conversations });
-  } catch (err) {
-    console.error("getConversations error:", err);
-    res
-      .status(err.status || 500)
-      .json({ success: false, message: err.message || "Server error" });
+    return res.json({ success: true, conversations });
+  } catch (error) {
+    console.error("getConversations error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
-// Fetch message history for an order and mark unread messages as read.
+// Fetch message history for an order and mark unread messages as read
 const getMessages = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -112,13 +106,12 @@ const getMessages = async (req, res) => {
       .populate("senderId", "companyName email role")
       .sort({ createdAt: 1 });
 
-    // Mark all messages sent to this user as read
     await Message.updateMany(
       { orderId, receiverId: userId, isRead: false },
       { $set: { isRead: true } },
     );
 
-    res.json({
+    return res.json({
       success: true,
       messages,
       isClosed,
@@ -128,15 +121,15 @@ const getMessages = async (req, res) => {
         logistics: order.logistics,
       },
     });
-  } catch (err) {
-    console.error("getMessages error:", err);
-    res
-      .status(err.status || 500)
-      .json({ success: false, message: err.message || "Server error" });
+  } catch (error) {
+    console.error("getMessages error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
-// Plain text messages should go through Socket.io for real-time delivery.
+// Send a file/image message (plain text goes through Socket.io for real-time delivery)
 const sendMessage = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -151,7 +144,6 @@ const sendMessage = async (req, res) => {
         message: "This chat is closed because the order has been delivered",
       });
     }
-
     if (!receiverId) {
       return res
         .status(400)
@@ -189,32 +181,29 @@ const sendMessage = async (req, res) => {
 
     await message.populate("senderId", "companyName email role");
 
-    // Emit to the order's chat room via Socket.io
     const io = getIO();
-    if (io) {
-      io.to(`chat_${orderId}`).emit("message_received", message);
-    }
+    if (io) io.to(`chat_${orderId}`).emit("message_received", message);
 
-    res.status(201).json({ success: true, message });
-  } catch (err) {
-    console.error("sendMessage error:", err);
-    res
-      .status(err.status || 500)
-      .json({ success: false, message: err.message || "Server error" });
+    return res.status(201).json({ success: true, message });
+  } catch (error) {
+    console.error("sendMessage error:", error);
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message || "Server error" });
   }
 };
 
-// Total unread message count across all orders — used for the navbar badge.
+// Get total unread message count across all orders — used for the navbar badge
 const getUnreadCount = async (req, res) => {
   try {
     const count = await Message.countDocuments({
       receiverId: req.user.id,
       isRead: false,
     });
-    res.json({ success: true, count });
-  } catch (err) {
-    console.error("getUnreadCount error:", err);
-    res.status(500).json({ success: false, message: "Server error" });
+    return res.json({ success: true, count });
+  } catch (error) {
+    console.error("getUnreadCount error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
-import { orderAPI } from "@/lib/api";
+import { orderAPI, type PaginationMeta } from "@/lib/api";
+import Pagination from "@/components/shared/pagination";
 import {
   Package,
   MapPin,
@@ -70,7 +71,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-// The status transitions a logistics company can make
 const STATUS_TRANSITIONS: Record<
   string,
   { label: string; next: OrderStatus; color: string }[]
@@ -105,6 +105,8 @@ const FILTER_TABS: { label: string; value: "all" | OrderStatus }[] = [
   { label: "Delivered", value: "delivered" },
   { label: "Cancelled", value: "cancelled" },
 ];
+
+const ITEMS_PER_PAGE = 10;
 
 function StatusBadge({ status }: { status: OrderStatus }) {
   const cfg = STATUS_CONFIG[status];
@@ -142,12 +144,10 @@ function OrderRow({
 
   return (
     <div className="border-b border-[#F5F5F5] last:border-0">
-      {/* Main row */}
       <div
         className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAFA] cursor-pointer transition"
         onClick={() => setExpanded((p) => !p)}
       >
-        {/* Order ID + product */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="font-mono text-xs font-bold text-[#252C32]">
@@ -169,8 +169,6 @@ function OrderRow({
             </span>
           </div>
         </div>
-
-        {/* Date + expand */}
         <div className="flex items-center gap-3 shrink-0">
           <p className="text-xs text-[#838383] hidden sm:block">
             {formatDate(order.createdAt)}
@@ -182,7 +180,6 @@ function OrderRow({
         </div>
       </div>
 
-      {/* Expanded detail panel */}
       {expanded && (
         <div className="px-5 pb-5 bg-[#FAFAFA] border-t border-[#F5F5F5]">
           <div className="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -215,7 +212,6 @@ function OrderRow({
             </div>
           </div>
 
-          {/* Documents */}
           {(order.invoiceNeeded || order.vatBillNeeded) && (
             <div className="flex gap-2 mb-4">
               {order.invoiceNeeded && (
@@ -231,14 +227,12 @@ function OrderRow({
             </div>
           )}
 
-          {/* Additional info */}
           {order.additionalInfo && (
             <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 mb-4 leading-relaxed">
               📝 {order.additionalInfo}
             </p>
           )}
 
-          {/* Status update buttons */}
           {transitions.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-2 border-t border-[#E5E9EB]">
               <p className="w-full text-xs text-[#838383] mb-1">
@@ -265,7 +259,6 @@ function OrderRow({
             </div>
           )}
 
-          {/* Terminal states */}
           {transitions.length === 0 && (
             <div
               className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border mt-2 ${STATUS_CONFIG[order.status].bg} ${STATUS_CONFIG[order.status].color}`}
@@ -283,18 +276,26 @@ function OrderRow({
 
 export default function LogisticsHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  async function fetchOrders(silent = false) {
+  async function fetchOrders(page = currentPage, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const data = await orderAPI.getMyOrders();
+      const data = await orderAPI.getMyOrders({ page, limit: ITEMS_PER_PAGE });
       setOrders(Array.isArray(data.orders) ? data.orders : []);
+      if (data.pagination) setPagination(data.pagination);
     } catch {
       if (silent) toast.error("Failed to refresh");
     } finally {
@@ -304,8 +305,11 @@ export default function LogisticsHistory() {
   }
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, searchQuery]);
 
   async function handleStatusUpdate(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
@@ -315,8 +319,10 @@ export default function LogisticsHistory() {
         prev.map((o) => (o.orderId === orderId ? { ...o, ...data.order } : o)),
       );
       toast.success(`Order marked as ${status}`);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update status");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update status",
+      );
     } finally {
       setUpdatingId(null);
     }
@@ -355,7 +361,6 @@ export default function LogisticsHistory() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#252C32]">
@@ -366,7 +371,7 @@ export default function LogisticsHistory() {
           </p>
         </div>
         <button
-          onClick={() => fetchOrders(true)}
+          onClick={() => fetchOrders(currentPage, true)}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
         >
@@ -375,9 +380,7 @@ export default function LogisticsHistory() {
         </button>
       </div>
 
-      {/* Table card */}
       <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
-        {/* Toolbar */}
         <div className="p-4 border-b border-[#F5F5F5]">
           <div className="relative max-w-sm">
             <Search
@@ -394,7 +397,6 @@ export default function LogisticsHistory() {
           </div>
         </div>
 
-        {/* Filter Tabs */}
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {FILTER_TABS.map((tab) => {
             const count =
@@ -428,7 +430,6 @@ export default function LogisticsHistory() {
           })}
         </div>
 
-        {/* Orders list */}
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
@@ -446,32 +447,26 @@ export default function LogisticsHistory() {
             </p>
           </div>
         ) : (
-          <div>
-            {filteredOrders.map((order) => (
-              <OrderRow
-                key={order._id}
-                order={order}
-                onStatusUpdate={handleStatusUpdate}
-                updatingId={updatingId}
-              />
-            ))}
-          </div>
+          filteredOrders.map((order) => (
+            <OrderRow
+              key={order._id}
+              order={order}
+              onStatusUpdate={handleStatusUpdate}
+              updatingId={updatingId}
+            />
+          ))
         )}
 
-        {/* Footer count */}
-        {filteredOrders.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#F5F5F5]">
-            <p className="text-xs text-[#838383]">
-              Showing{" "}
-              <span className="font-medium text-[#252C32]">
-                {filteredOrders.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-[#252C32]">
-                {orders.length}
-              </span>{" "}
-              orders
-            </p>
+        {pagination.totalPages > 1 && (
+          <div className="px-4 border-t border-[#F5F5F5]">
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={ITEMS_PER_PAGE}
+              itemLabel="orders"
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </div>
         )}
       </div>

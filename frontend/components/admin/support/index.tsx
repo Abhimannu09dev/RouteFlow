@@ -15,8 +15,18 @@ import {
   Building2,
 } from "lucide-react";
 import { format } from "date-fns";
+import Pagination from "@/components/shared/pagination";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+const ITEMS_PER_PAGE = 10;
 
 async function apiFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -29,7 +39,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 type Ticket = {
   _id: string;
@@ -40,15 +50,10 @@ type Ticket = {
   adminReply: string | null;
   repliedAt: string | null;
   createdAt: string;
-  userId: {
-    _id: string;
-    companyName: string;
-    email: string;
-    role: string;
-  };
+  userId: { _id: string; companyName: string; email: string; role: string };
 };
 
-// ─── Filter config ────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const STATUS_TABS = [
   { value: "", label: "All" },
@@ -85,7 +90,7 @@ const STATUS_CONFIG: Record<
   },
 };
 
-// ─── StatusBadge ──────────────────────────────────────────────────────────────
+// ── StatusBadge ───────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.open;
@@ -100,7 +105,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ─── TicketRow ────────────────────────────────────────────────────────────────
+// ── TicketRow ─────────────────────────────────────────────────────────────────
 
 function TicketRow({
   ticket,
@@ -119,10 +124,7 @@ function TicketRow({
     try {
       const data = await apiFetch(`/admin/support-tickets/${ticket._id}`, {
         method: "PUT",
-        body: JSON.stringify({
-          status,
-          adminReply: reply.trim() || undefined,
-        }),
+        body: JSON.stringify({ status, adminReply: reply.trim() || undefined }),
       });
       onUpdated(data.ticket);
       toast.success("Ticket updated");
@@ -143,17 +145,13 @@ function TicketRow({
     <div
       className={`border-b border-[#F5F5F5] last:border-0 transition ${expanded ? "bg-[#FAFAFA]" : "bg-white hover:bg-[#F9FAFB]"}`}
     >
-      {/* Summary row */}
       <button
         onClick={() => setExpanded((p) => !p)}
         className="w-full text-left px-5 py-4 flex items-center gap-4"
       >
-        {/* Company avatar */}
         <div className="w-9 h-9 rounded-xl bg-[#F5F5F5] flex items-center justify-center shrink-0">
           <Building2 size={16} className="text-[#838383]" />
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[#252C32] truncate">
@@ -173,8 +171,6 @@ function TicketRow({
             {format(new Date(ticket.createdAt), "dd MMM yyyy, hh:mm a")}
           </p>
         </div>
-
-        {/* Status + chevron */}
         <div className="flex items-center gap-2 shrink-0">
           <StatusBadge status={ticket.status} />
           {expanded ? (
@@ -185,10 +181,8 @@ function TicketRow({
         </div>
       </button>
 
-      {/* Expanded panel */}
       {expanded && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-[#F5F5F5]">
-          {/* User message */}
           <div className="mt-4">
             <p className="text-xs font-semibold text-[#838383] uppercase tracking-wider mb-2">
               User Message
@@ -201,13 +195,10 @@ function TicketRow({
             </p>
           </div>
 
-          {/* Admin controls */}
           <div className="flex flex-col gap-3">
             <p className="text-xs font-semibold text-[#838383] uppercase tracking-wider">
               Admin Response
             </p>
-
-            {/* Status selector */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-[#838383]">Status:</span>
               {(["open", "in-progress", "resolved"] as const).map((s) => (
@@ -224,8 +215,6 @@ function TicketRow({
                 </button>
               ))}
             </div>
-
-            {/* Reply textarea */}
             <textarea
               value={reply}
               onChange={(e) => setReply(e.target.value)}
@@ -233,15 +222,12 @@ function TicketRow({
               rows={4}
               className="w-full px-4 py-3 rounded-xl border border-[#E5E9EB] text-sm text-[#252C32] placeholder-[#B0B7C3] focus:outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-400 transition resize-none bg-white"
             />
-
             {ticket.repliedAt && (
               <p className="text-xs text-[#838383]">
                 Last replied{" "}
                 {format(new Date(ticket.repliedAt), "dd MMM yyyy, hh:mm a")}
               </p>
             )}
-
-            {/* Save button */}
             <button
               onClick={handleSave}
               disabled={saving || !isDirty}
@@ -261,17 +247,24 @@ function TicketRow({
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AdminSupportTickets() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const fetchTickets = useCallback(
-    async (silent = false) => {
+    async (page = currentPage, silent = false) => {
       if (!silent) setIsLoading(true);
       else setIsRefreshing(true);
 
@@ -279,11 +272,14 @@ export default function AdminSupportTickets() {
         const params = new URLSearchParams();
         if (statusFilter) params.set("status", statusFilter);
         if (categoryFilter) params.set("category", categoryFilter);
+        params.set("page", String(page));
+        params.set("limit", String(ITEMS_PER_PAGE));
 
         const data = await apiFetch(
           `/admin/support-tickets?${params.toString()}`,
         );
         setTickets(Array.isArray(data.tickets) ? data.tickets : []);
+        if (data.pagination) setPagination(data.pagination);
       } catch {
         if (silent) toast.error("Failed to refresh");
       } finally {
@@ -291,12 +287,15 @@ export default function AdminSupportTickets() {
         setIsRefreshing(false);
       }
     },
-    [statusFilter, categoryFilter],
+    [statusFilter, categoryFilter, currentPage],
   );
 
   useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+    fetchTickets(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, categoryFilter]);
 
   function handleUpdated(updated: Ticket) {
     setTickets((prev) =>
@@ -324,7 +323,6 @@ export default function AdminSupportTickets() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#252C32]">
@@ -340,7 +338,7 @@ export default function AdminSupportTickets() {
           </p>
         </div>
         <button
-          onClick={() => fetchTickets(true)}
+          onClick={() => fetchTickets(currentPage, true)}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] bg-white text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
         >
@@ -349,9 +347,7 @@ export default function AdminSupportTickets() {
         </button>
       </div>
 
-      {/* Main card */}
       <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
-        {/* Filter tabs */}
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {STATUS_TABS.map((tab) => (
             <button
@@ -382,7 +378,6 @@ export default function AdminSupportTickets() {
           ))}
         </div>
 
-        {/* Ticket list */}
         {tickets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
@@ -405,16 +400,16 @@ export default function AdminSupportTickets() {
           ))
         )}
 
-        {/* Footer count */}
-        {tickets.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#F5F5F5]">
-            <p className="text-xs text-[#838383]">
-              Showing{" "}
-              <span className="font-medium text-[#252C32]">
-                {tickets.length}
-              </span>{" "}
-              ticket{tickets.length !== 1 ? "s" : ""}
-            </p>
+        {pagination.totalPages > 1 && (
+          <div className="px-4 border-t border-[#F5F5F5]">
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={ITEMS_PER_PAGE}
+              itemLabel="tickets"
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </div>
         )}
       </div>

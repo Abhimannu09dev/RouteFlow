@@ -1,5 +1,5 @@
-import Order from "../models/orderModel.js";
 import crypto from "crypto";
+import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
 import {
   notifyLogisticsNewOrder,
@@ -7,7 +7,23 @@ import {
   notifyManufacturerStatusUpdate,
 } from "../websocket/orderEvents.js";
 
-//  Create Order
+const VALID_STATUSES = ["accepted", "in transit", "delivered", "cancelled"];
+
+const parsePagination = (query) => {
+  const page = Math.max(1, parseInt(query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
+  const skip = (page - 1) * limit;
+  return { page, limit, skip };
+};
+
+const buildPaginationMeta = (total, page, limit) => ({
+  total,
+  page,
+  limit,
+  totalPages: Math.ceil(total / limit),
+});
+
+// Create a new order (manufacturer only)
 const createOrder = async (req, res) => {
   try {
     if (req.user.role !== "manufacturer") {
@@ -61,8 +77,6 @@ const createOrder = async (req, res) => {
     });
 
     await order.save();
-
-    // Notify all connected logistics companies of the new order
     notifyLogisticsNewOrder(order);
 
     return res.status(201).json({ success: true, order });
@@ -70,73 +84,116 @@ const createOrder = async (req, res) => {
     if (error.name === "ValidationError") {
       return res.status(400).json({ success: false, message: error.message });
     }
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-//  Get Available Orders
+// Get orders list — manufacturer sees their orders, logistics sees available pending orders
+// Supports pagination via ?page=1&limit=10
 const getAvailableOrders = async (req, res) => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     const role = req.user.role;
 
     if (role === "manufacturer") {
-      const orders = await Order.find({ manufacturer: req.user.id })
-        .populate("manufacturer", "companyName email")
-        .populate("logistics", "companyName email")
-        .sort({ createdAt: -1 });
-      return res.status(200).json({ success: true, orders });
-    } else if (role === "logistics") {
-      const orders = await Order.find({ logistics: null, status: "pending" })
-        .populate("manufacturer", "companyName email")
-        .sort({ createdAt: -1 });
-      return res.status(200).json({ success: true, orders });
-    } else {
-      return res.status(403).json({ success: false, message: "Access denied" });
+      const filter = { manufacturer: req.user.id };
+      const [orders, total] = await Promise.all([
+        Order.find(filter)
+          .populate("manufacturer", "companyName email")
+          .populate("logistics", "companyName email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Order.countDocuments(filter),
+      ]);
+      return res.status(200).json({
+        success: true,
+        orders,
+        pagination: buildPaginationMeta(total, page, limit),
+      });
     }
+
+    if (role === "logistics") {
+      const filter = { logistics: null, status: "pending" };
+      const [orders, total] = await Promise.all([
+        Order.find(filter)
+          .populate("manufacturer", "companyName email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Order.countDocuments(filter),
+      ]);
+      return res.status(200).json({
+        success: true,
+        orders,
+        pagination: buildPaginationMeta(total, page, limit),
+      });
+    }
+
+    return res.status(403).json({ success: false, message: "Access denied" });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-//  Get My Orders
+// Get orders assigned to the logged-in user (history)
+// Supports pagination via ?page=1&limit=10
 const getMyOrders = async (req, res) => {
   try {
+    const { page, limit, skip } = parsePagination(req.query);
     const role = req.user.role;
 
     if (role === "logistics") {
-      const orders = await Order.find({ logistics: req.user.id })
-        .populate("manufacturer", "companyName email")
-        .sort({ updatedAt: -1 });
-      return res.status(200).json({ success: true, orders });
-    } else if (role === "manufacturer") {
-      const orders = await Order.find({ manufacturer: req.user.id })
-        .populate("logistics", "companyName email")
-        .sort({ createdAt: -1 });
-      return res.status(200).json({ success: true, orders });
-    } else {
-      return res.status(403).json({ success: false, message: "Access denied" });
+      const filter = { logistics: req.user.id };
+      const [orders, total] = await Promise.all([
+        Order.find(filter)
+          .populate("manufacturer", "companyName email")
+          .sort({ updatedAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Order.countDocuments(filter),
+      ]);
+      return res.status(200).json({
+        success: true,
+        orders,
+        pagination: buildPaginationMeta(total, page, limit),
+      });
     }
+
+    if (role === "manufacturer") {
+      const filter = { manufacturer: req.user.id };
+      const [orders, total] = await Promise.all([
+        Order.find(filter)
+          .populate("logistics", "companyName email")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit),
+        Order.countDocuments(filter),
+      ]);
+      return res.status(200).json({
+        success: true,
+        orders,
+        pagination: buildPaginationMeta(total, page, limit),
+      });
+    }
+
+    return res.status(403).json({ success: false, message: "Access denied" });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-//  Get Single Order Details
+// Get a single order by orderId string
 const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
+
     const order = await Order.findOne({ orderId })
       .populate("manufacturer", "companyName email")
       .populate("logistics", "companyName email");
@@ -146,64 +203,22 @@ const getOrderDetails = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Order not found" });
     }
-    return res.status(200).json({ success: true, order });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
-  }
-};
-
-//  Accept Order directly (logistics only)
-const acceptOrder = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const logisticsId = req.user.id;
-
-    const order = await Order.findOneAndUpdate(
-      { orderId, logistics: null, status: "pending" },
-      { logistics: logisticsId, status: "accepted", updatedAt: Date.now() },
-      { new: true },
-    )
-      .populate("manufacturer", "companyName email")
-      .populate("logistics", "companyName email");
-
-    if (!order) {
-      return res.status(409).json({
-        success: false,
-        message: "Order already taken or not found",
-      });
-    }
-
-    // Reject all pending bids
-    await PriceOffer.updateMany(
-      { order: order._id, status: "pending" },
-      { status: "rejected", updatedAt: new Date() },
-    );
-
-    // Notify manufacturer that their order was accepted directly
-    notifyManufacturerOrderAccepted(order, order.logistics.companyName);
 
     return res.status(200).json({ success: true, order });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-//  Update Order Status (logistics only)
+// Update order status (logistics only — must be the assigned partner)
 const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status } = req.body;
     const userId = req.user.id;
 
-    const VALID_STATUSES = ["accepted", "in transit", "delivered", "cancelled"];
     if (!status || !VALID_STATUSES.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -227,16 +242,13 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
-    // Notify manufacturer of the status change
     notifyManufacturerStatusUpdate(order, status, order.logistics.companyName);
 
     return res.status(200).json({ success: true, order });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: "Server error",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Server error", error: error.message });
   }
 };
 

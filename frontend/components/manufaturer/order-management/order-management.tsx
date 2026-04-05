@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { orderAPI } from "@/lib/api";
+import { orderAPI, type PaginationMeta } from "@/lib/api";
+import Pagination from "@/components/shared/pagination";
 import {
   Plus,
   Search,
@@ -47,16 +48,11 @@ type Order = {
   logistics?: { companyName: string; email: string } | null;
 };
 
-// ── Status Config ─────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
   OrderStatus,
-  {
-    label: string;
-    color: string;
-    bg: string;
-    icon: React.ElementType;
-  }
+  { label: string; color: string; bg: string; icon: React.ElementType }
 > = {
   pending: {
     label: "Pending",
@@ -99,6 +95,8 @@ const FILTER_TABS: { label: string; value: "all" | OrderStatus }[] = [
   { label: "Cancelled", value: "cancelled" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -121,7 +119,7 @@ function StatCard({
   color,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   icon: React.ElementType;
   color: string;
 }) {
@@ -140,51 +138,32 @@ function StatCard({
   );
 }
 
-function EmptyState({ filtered }: { filtered: boolean }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-4">
-        <Package size={28} className="text-[#B0B7C3]" />
-      </div>
-      <p className="text-sm font-medium text-[#252C32]">
-        {filtered ? "No orders match your filter" : "No orders yet"}
-      </p>
-      <p className="text-xs text-[#838383] mt-1 mb-5">
-        {filtered
-          ? "Try a different status filter or search term"
-          : "Place your first order to get started"}
-      </p>
-      {!filtered && (
-        <Link
-          href="/manufacturer/order-management/order-placement-form"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition"
-        >
-          <Plus size={15} />
-          Place First Order
-        </Link>
-      )}
-    </div>
-  );
-}
-
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function OrderManagement() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | OrderStatus>("all");
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  async function fetchOrders(silent = false) {
+  async function fetchOrders(page = currentPage, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const data = await orderAPI.getOrders();
+      const data = await orderAPI.getOrders({ page, limit: ITEMS_PER_PAGE });
       setOrders(Array.isArray(data.orders) ? data.orders : []);
-    } catch (error: any) {
+      if (data.pagination) setPagination(data.pagination);
+    } catch {
       if (silent) toast.error("Failed to refresh orders");
       setOrders([]);
     } finally {
@@ -194,18 +173,13 @@ export default function OrderManagement() {
   }
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(currentPage);
+  }, [currentPage]);
 
-  const stats = useMemo(
-    () => ({
-      total: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      inTransit: orders.filter((o) => o.status === "in transit").length,
-      delivered: orders.filter((o) => o.status === "delivered").length,
-    }),
-    [orders],
-  );
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, searchQuery]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -230,12 +204,7 @@ export default function OrderManagement() {
     });
   }
 
-  function handleViewOrder(orderId: string) {
-    router.push(`/manufacturer/order-management/${orderId}`);
-  }
-
-  // ── Loading skeleton ───────────────────────────────────────────────────────
-
+  // ── Loading skeleton ──
   if (isLoading) {
     return (
       <div className="w-full flex flex-col gap-5">
@@ -263,8 +232,7 @@ export default function OrderManagement() {
     );
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
+  // ── Render ──
   return (
     <div className="w-full flex flex-col gap-5">
       {/* Header */}
@@ -290,25 +258,25 @@ export default function OrderManagement() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Orders"
-          value={stats.total}
+          value={pagination.total}
           icon={Package}
           color="bg-[#252C32]"
         />
         <StatCard
           label="Pending"
-          value={stats.pending}
+          value={orders.filter((o) => o.status === "pending").length}
           icon={Clock}
           color="bg-amber-400"
         />
         <StatCard
           label="In Transit"
-          value={stats.inTransit}
+          value={orders.filter((o) => o.status === "in transit").length}
           icon={Truck}
           color="bg-purple-500"
         />
         <StatCard
           label="Delivered"
-          value={stats.delivered}
+          value={orders.filter((o) => o.status === "delivered").length}
           icon={CheckCircle}
           color="bg-green-500"
         />
@@ -332,7 +300,7 @@ export default function OrderManagement() {
             />
           </div>
           <button
-            onClick={() => fetchOrders(true)}
+            onClick={() => fetchOrders(currentPage, true)}
             disabled={isRefreshing}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
           >
@@ -380,7 +348,30 @@ export default function OrderManagement() {
 
         {/* Content */}
         {filteredOrders.length === 0 ? (
-          <EmptyState filtered={activeFilter !== "all" || searchQuery !== ""} />
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-4">
+              <Package size={28} className="text-[#B0B7C3]" />
+            </div>
+            <p className="text-sm font-medium text-[#252C32]">
+              {activeFilter !== "all" || searchQuery
+                ? "No orders match your filter"
+                : "No orders yet"}
+            </p>
+            <p className="text-xs text-[#838383] mt-1 mb-5">
+              {activeFilter !== "all" || searchQuery
+                ? "Try a different filter or search term"
+                : "Place your first order to get started"}
+            </p>
+            {activeFilter === "all" && !searchQuery && (
+              <Link
+                href="/manufacturer/order-management/order-placement-form"
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-xl hover:bg-primary-dark transition"
+              >
+                <Plus size={15} />
+                Place First Order
+              </Link>
+            )}
+          </div>
         ) : (
           <>
             {/* Desktop table */}
@@ -413,14 +404,11 @@ export default function OrderManagement() {
                       key={order._id}
                       className="border-b border-[#F5F5F5] last:border-0 hover:bg-[#FAFAFA] transition"
                     >
-                      {/* Order ID */}
                       <td className="px-4 py-3.5">
                         <span className="font-mono text-xs font-semibold text-[#252C32]">
                           #{order.orderId.replace("ORD-", "")}
                         </span>
                       </td>
-
-                      {/* Product */}
                       <td className="px-4 py-3.5 max-w-[180px]">
                         <p className="text-[#252C32] font-medium truncate">
                           {order.productDetails}
@@ -436,8 +424,6 @@ export default function OrderManagement() {
                           </span>
                         </div>
                       </td>
-
-                      {/* Route */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5 text-xs text-[#252C32]">
                           <MapPin size={11} className="text-primary shrink-0" />
@@ -446,8 +432,6 @@ export default function OrderManagement() {
                           <span>{order.routeTo || "—"}</span>
                         </div>
                       </td>
-
-                      {/* Vehicle + Docs */}
                       <td className="px-4 py-3.5">
                         <p className="text-xs text-[#252C32] capitalize">
                           {order.vehicleType?.replace(/_/g, " ") || "—"}
@@ -465,8 +449,6 @@ export default function OrderManagement() {
                           )}
                         </div>
                       </td>
-
-                      {/* Logistics Partner */}
                       <td className="px-4 py-3.5">
                         {order.logistics ? (
                           <div>
@@ -483,23 +465,21 @@ export default function OrderManagement() {
                           </span>
                         )}
                       </td>
-
-                      {/* Status */}
                       <td className="px-4 py-3.5">
                         <StatusBadge status={order.status} />
                       </td>
-
-                      {/* Date */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <p className="text-xs text-[#838383]">
                           {formatDate(order.createdAt)}
                         </p>
                       </td>
-
-                      {/* View — shows "View Bids" on pending, arrow on others */}
                       <td className="px-4 py-3.5">
                         <button
-                          onClick={() => handleViewOrder(order.orderId)}
+                          onClick={() =>
+                            router.push(
+                              `/manufacturer/order-management/${order.orderId}`,
+                            )
+                          }
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition ${
                             order.status === "pending"
                               ? "bg-primary/10 text-primary hover:bg-primary/20"
@@ -525,7 +505,11 @@ export default function OrderManagement() {
                 <div
                   key={order._id}
                   className="p-4 hover:bg-[#FAFAFA] transition cursor-pointer"
-                  onClick={() => handleViewOrder(order.orderId)}
+                  onClick={() =>
+                    router.push(
+                      `/manufacturer/order-management/${order.orderId}`,
+                    )
+                  }
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div>
@@ -560,20 +544,17 @@ export default function OrderManagement() {
           </>
         )}
 
-        {/* Footer */}
-        {filteredOrders.length > 0 && (
-          <div className="px-4 py-3 border-t border-[#F5F5F5]">
-            <p className="text-xs text-[#838383]">
-              Showing{" "}
-              <span className="font-medium text-[#252C32]">
-                {filteredOrders.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-[#252C32]">
-                {orders.length}
-              </span>{" "}
-              orders
-            </p>
+        {/* Pagination footer */}
+        {pagination.totalPages > 1 && (
+          <div className="px-4 border-t border-[#F5F5F5]">
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={ITEMS_PER_PAGE}
+              itemLabel="orders"
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </div>
         )}
       </div>

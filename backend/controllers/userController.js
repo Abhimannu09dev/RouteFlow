@@ -1,28 +1,25 @@
 import bcrypt from "bcrypt";
-import User from "../models/userModel.js";
-import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
+import User from "../models/userModel.js";
 import { sendOtpEmail, sendEmail } from "../utils/mailer.js";
 
-function generateOtp() {
-  return crypto.randomInt(100000, 999999).toString();
-}
+const generateOtp = () => crypto.randomInt(100000, 999999).toString();
 
-function hashOtp(otp) {
-  return crypto.createHash("sha256").update(otp).digest("hex");
-}
+const hashOtp = (otp) => crypto.createHash("sha256").update(otp).digest("hex");
 
-// Function to create user
-const createUser = async (req, res, next) => {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Register a new user and send OTP
+const createUser = async (req, res) => {
   try {
     const { companyName, email, password, role } = req.body;
 
-    // validation of data through backend
-    if (!companyName || !companyName.trim()) {
+    if (!companyName?.trim()) {
       return res.status(400).json({ error: "Company name is required" });
     }
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: "Email is required" });
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: "Valid email is required" });
     }
     if (!password || password.length < 6) {
       return res
@@ -30,7 +27,6 @@ const createUser = async (req, res, next) => {
         .json({ error: "Password must be at least 6 characters" });
     }
 
-    // Check if user exits
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -38,6 +34,7 @@ const createUser = async (req, res, next) => {
         return res.status(409).json({ error: "User already exists" });
       }
 
+      // Resend OTP for unverified users
       const otp = generateOtp();
       existingUser.otpHash = hashOtp(otp);
       existingUser.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
@@ -53,20 +50,17 @@ const createUser = async (req, res, next) => {
         });
       }
 
-      return res.status(200).json({
-        message: "OTP resent to email",
-        success: true,
-      });
+      return res
+        .status(200)
+        .json({ success: true, message: "OTP resent to email" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
     const otp = generateOtp();
-
     const user = new User({
       companyName,
       email,
       role,
-      password: hashedPassword,
+      password: await bcrypt.hash(password, 10),
       isVerified: false,
       otpHash: hashOtp(otp),
       otpExpires: new Date(Date.now() + 10 * 60 * 1000),
@@ -84,25 +78,24 @@ const createUser = async (req, res, next) => {
       });
     }
 
-    res.status(201).json({
-      message: "User created. OTP sent to email",
-      success: true,
-    });
+    return res
+      .status(201)
+      .json({ success: true, message: "User created. OTP sent to email" });
   } catch (error) {
-    console.error("Error creating user", error.message);
+    console.error("Error creating user:", error.message);
     return res
       .status(400)
       .json({ error: error.message || "Error creating user" });
   }
 };
 
-// Function to login the user
-const loginUser = async (req, res, next) => {
+// Login with email and password
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
-    // validation of data through backend
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ error: "Email is required" });
+
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: "Valid email is required" });
     }
     if (!password || password.length < 6) {
       return res
@@ -114,29 +107,22 @@ const loginUser = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ error: "Email not found" });
     }
-
     if (!user.isVerified) {
       return res.status(403).json({ error: "Account not verified" });
     }
-    // Check if the password is valid or not
+
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
       return res.status(401).json({ error: "Mismatched password" });
     }
 
-    const userDetails = {
-      _id: user._id,
-      companyName: user.companyName,
-      email: user.email,
-      role: user.role,
-    };
-
-    const payload = { id: user._id, role: user.role };
-    console.log("payload:", payload);
-
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+      },
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -145,17 +131,25 @@ const loginUser = async (req, res, next) => {
       maxAge: 60 * 60 * 1000,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Login successful",
-      user: userDetails,
+      user: {
+        _id: user._id,
+        companyName: user.companyName,
+        email: user.email,
+        role: user.role,
+      },
     });
   } catch (error) {
-    console.error("Error logging in", error.message);
-    res.status(500).json({ error: "Failed to log in. Please try again!" });
+    console.error("Error logging in:", error.message);
+    return res
+      .status(500)
+      .json({ error: "Failed to log in. Please try again!" });
   }
 };
 
+// Verify OTP and activate account
 const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -168,17 +162,13 @@ const verifyOtp = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
     if (user.isVerified) {
       return res.status(200).json({ message: "Email already verified" });
     }
-
     if (!user.otpHash || !user.otpExpires || user.otpExpires < new Date()) {
       return res.status(400).json({ error: "OTP expired" });
     }
-
-    const otpHash = hashOtp(otp);
-    if (otpHash !== user.otpHash) {
+    if (hashOtp(otp) !== user.otpHash) {
       return res.status(401).json({ error: "Invalid OTP" });
     }
 
@@ -189,11 +179,12 @@ const verifyOtp = async (req, res) => {
 
     return res.status(200).json({ message: "Email verified successfully" });
   } catch (error) {
-    console.error("Error verifying OTP", error.message);
+    console.error("Error verifying OTP:", error.message);
     return res.status(500).json({ error: "Failed to verify OTP" });
   }
 };
 
+// Resend OTP to email
 const resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -206,7 +197,6 @@ const resendOtp = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
     if (user.isVerified) {
       return res.status(200).json({ message: "Email already verified" });
     }
@@ -226,21 +216,21 @@ const resendOtp = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      message: "OTP resent to email",
-      success: true,
-    });
+    return res
+      .status(200)
+      .json({ success: true, message: "OTP resent to email" });
   } catch (error) {
-    console.error("Error resending OTP", error.message);
+    console.error("Error resending OTP:", error.message);
     return res.status(500).json({ error: "Failed to resend OTP" });
   }
 };
 
+// Send password reset link to email
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email || !EMAIL_REGEX.test(email)) {
       return res.status(400).json({ error: "Valid email is required" });
     }
 
@@ -253,19 +243,14 @@ const forgotPassword = async (req, res) => {
       });
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenHash = crypto
+    user.resetTokenHash = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    const resetTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
-
-    user.resetTokenHash = resetTokenHash;
-    user.resetTokenExpires = resetTokenExpires;
+    user.resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await user.save();
 
-    // Send reset email
     const resetLink = `${process.env.FRONTEND_URL}/auth/create-password?token=${resetToken}`;
 
     const htmlContent = `
@@ -307,15 +292,15 @@ const forgotPassword = async (req, res) => {
       );
     } catch (emailError) {
       console.error("Email sending failed:", emailError.message);
-      return res.status(500).json({
-        error: "Failed to send reset email. Please try again later.",
-      });
+      return res
+        .status(500)
+        .json({ error: "Failed to send reset email. Please try again later." });
     }
 
     return res.status(200).json({
+      success: true,
       message:
         "If an account exists, a password reset link will be sent to the email",
-      success: true,
     });
   } catch (error) {
     console.error("Error in forgot password:", error.message);
@@ -325,117 +310,51 @@ const forgotPassword = async (req, res) => {
   }
 };
 
+// Reset password using token from email link
 const resetPassword = async (req, res) => {
   try {
     const { token, password, confirmPassword } = req.body;
 
     if (!token || !password || !confirmPassword) {
-      return res.status(400).json({
-        error: "Token, password, and confirm password are required",
-      });
+      return res
+        .status(400)
+        .json({ error: "Token, password, and confirm password are required" });
     }
-
     if (password !== confirmPassword) {
       return res.status(400).json({ error: "Passwords do not match" });
     }
-
     if (password.length < 6) {
-      return res.status(400).json({
-        error: "Password must be at least 6 characters",
-      });
+      return res
+        .status(400)
+        .json({ error: "Password must be at least 6 characters" });
     }
 
-    // Hash the token to find the user
     const resetTokenHash = crypto
       .createHash("sha256")
       .update(token)
       .digest("hex");
-
     const user = await User.findOne({
       resetTokenHash,
       resetTokenExpires: { $gt: new Date() },
     });
 
     if (!user) {
-      return res.status(400).json({
-        error: "Invalid or expired reset token",
-      });
+      return res.status(400).json({ error: "Invalid or expired reset token" });
     }
 
-    // Update password
-    const hashedPassword = await bcrypt.hash(password, 10);
-    user.password = hashedPassword;
+    user.password = await bcrypt.hash(password, 10);
     user.resetTokenHash = undefined;
     user.resetTokenExpires = undefined;
     await user.save();
 
-    return res.status(200).json({
-      message: "Password reset successfully",
-      success: true,
-    });
+    return res
+      .status(200)
+      .json({ success: true, message: "Password reset successfully" });
   } catch (error) {
     console.error("Error resetting password:", error.message);
     return res.status(500).json({ error: "Failed to reset password" });
   }
 };
-
-// async function accountVerificationStatus(req, res) {
-//   try {
-//     const { email } = req.body;
-
-//     if (!email) {
-//       return res.status(400).json({ error: "Email is required" });
-//     }
-
-//     // Check user exists first
-//     const userExists = await User.findOne({ email, isAccountVerified: false });
-//     if (!userExists) {
-//       return res.status(404).json({ error: "User not found" });
-//     }
-//     if (userExists.isAccountVerified) {
-//       return res.status(200).json({ message: "Account already verified" });
-//     }
-
-//     // Build update object (only update provided fields)
-//     const updatableFields = [
-//       "companyName",
-//       "contactNumber",
-//       "panNo",
-//       "companyLocation",
-//       "companyDescription",
-//       "companyLogo",
-//       "companyDocument",
-//       "companyWebsite",
-//     ];
-
-//     const updateData = {};
-//     for (const key of updatableFields) {
-//       if (req.body[key] !== undefined) {
-//         updateData[key] = req.body[key];
-//       }
-//     }
-
-//     // Update and return updated document if you need it
-//     const updatedUser = await User.findOneAndUpdate(
-//       { email },
-//       { $set: updateData },
-//       { new: true, runValidators: true },
-//     );
-
-//     return res.status(200).json({
-//       message: "Account details sent for verification",
-//       user: updatedUser, // optional: remove if you don't want to return user
-//     });
-//   } catch (error) {
-//     console.error(
-//       "Error updating account verification details:",
-//       error.message,
-//     );
-//     return res
-//       .status(500)
-//       .json({ error: "Failed to update account verification details" });
-//   }
-// }
 
 export {
   createUser,
@@ -444,5 +363,4 @@ export {
   resendOtp,
   forgotPassword,
   resetPassword,
-  // accountVerificationStatus,
 };
