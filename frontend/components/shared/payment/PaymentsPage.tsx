@@ -10,7 +10,9 @@ import {
   TrendingDown,
   Package,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
+import PaymentModal from "@/components/shared/payment/PaymentModal";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -33,7 +35,7 @@ type Payment = {
   createdAt: string;
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+//  Helpers
 
 const STATUS_CONFIG = {
   completed: {
@@ -89,20 +91,30 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// ─── Payment Row ──────────────────────────────────────────────────────────────
+// Payment Row
 
 function PaymentRow({
   payment,
   role,
+  onRetry,
 }: {
   payment: Payment;
   role: "manufacturer" | "logistics";
+  onRetry?: (payment: Payment) => void;
 }) {
   const isManufacturer = role === "manufacturer";
   const order = payment.orderId;
+  const isPending = payment.status === "pending";
 
   return (
-    <div className="px-5 py-4 border-b border-[#F5F5F5] last:border-0 hover:bg-[#F9FAFB] transition">
+    <div
+      className={`px-5 py-4 border-b border-[#F5F5F5] last:border-0 transition ${
+        isPending && isManufacturer
+          ? "hover:bg-amber-50/40 cursor-pointer"
+          : "hover:bg-[#F9FAFB]"
+      }`}
+      onClick={() => isPending && isManufacturer && onRetry?.(payment)}
+    >
       <div className="flex items-start justify-between gap-4">
         {/* Order info */}
         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -156,13 +168,19 @@ function PaymentRow({
           <p className="text-[10px] text-[#9AA6AC] mt-0.5">
             {format(new Date(payment.createdAt), "dd MMM yyyy, hh:mm a")}
           </p>
+          {isPending && isManufacturer && (
+            <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-100 px-2 py-0.5 rounded-full">
+              <RefreshCw size={9} />
+              Tap to retry
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+//  Main Page
 
 export default function PaymentsPage({
   role,
@@ -171,8 +189,10 @@ export default function PaymentsPage({
 }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [retryPayment, setRetryPayment] = useState<Payment | null>(null);
 
-  useEffect(() => {
+  function loadPayments() {
+    setLoading(true);
     fetch(`${API_BASE}/payment/my-payments`, { credentials: "include" })
       .then((r) => r.json())
       .then((data) =>
@@ -180,6 +200,10 @@ export default function PaymentsPage({
       )
       .catch(() => {})
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadPayments();
   }, []);
 
   // Summary stats
@@ -188,6 +212,19 @@ export default function PaymentsPage({
 
   return (
     <div className="max-w-3xl mx-auto flex flex-col gap-5 py-2">
+      {/* Retry Payment Modal */}
+      {retryPayment && (
+        <PaymentModal
+          orderId={retryPayment.orderId._id}
+          orderTitle={retryPayment.orderId.productDetails || "Order Payment"}
+          amount={retryPayment.amount}
+          onClose={() => setRetryPayment(null)}
+          onSuccess={() => {
+            setRetryPayment(null);
+            loadPayments();
+          }}
+        />
+      )}
       <div>
         <h1 className="text-lg font-semibold text-[#252C32]">
           {role === "manufacturer" ? "Payments Made" : "Payments Received"}
@@ -253,7 +290,12 @@ export default function PaymentsPage({
         ) : (
           <>
             {payments.map((p) => (
-              <PaymentRow key={p._id} payment={p} role={role} />
+              <PaymentRow
+                key={p._id}
+                payment={p}
+                role={role}
+                onRetry={setRetryPayment}
+              />
             ))}
             <div className="px-5 py-3 border-t border-[#F5F5F5]">
               <p className="text-xs text-[#838383]">
