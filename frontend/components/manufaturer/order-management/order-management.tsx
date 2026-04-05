@@ -21,8 +21,6 @@ import {
   Hash,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 type OrderStatus =
   | "pending"
   | "accepted"
@@ -47,8 +45,6 @@ type Order = {
   updatedAt: string;
   logistics?: { companyName: string; email: string } | null;
 };
-
-// ── Config ────────────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
   OrderStatus,
@@ -97,8 +93,6 @@ const FILTER_TABS: { label: string; value: "all" | OrderStatus }[] = [
 
 const ITEMS_PER_PAGE = 10;
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
 function StatusBadge({ status }: { status: OrderStatus }) {
   const config = STATUS_CONFIG[status];
   const Icon = config.icon;
@@ -138,8 +132,6 @@ function StatCard({
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-
 export default function OrderManagement() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -148,6 +140,11 @@ export default function OrderManagement() {
     page: 1,
     limit: ITEMS_PER_PAGE,
     totalPages: 1,
+  });
+  const [statusCounts, setStatusCounts] = useState({
+    pending: 0,
+    "in transit": 0,
+    delivered: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,9 +157,20 @@ export default function OrderManagement() {
     else setIsRefreshing(true);
 
     try {
-      const data = await orderAPI.getOrders({ page, limit: ITEMS_PER_PAGE });
-      setOrders(Array.isArray(data.orders) ? data.orders : []);
-      if (data.pagination) setPagination(data.pagination);
+      // Fetch current page + all orders (large limit) for accurate stat counts
+      const [pageData, allData] = await Promise.all([
+        orderAPI.getOrders({ page, limit: ITEMS_PER_PAGE }),
+        orderAPI.getOrders({ page: 1, limit: 1000 }),
+      ]);
+      setOrders(Array.isArray(pageData.orders) ? pageData.orders : []);
+      if (pageData.pagination) setPagination(pageData.pagination);
+
+      const all: Order[] = Array.isArray(allData.orders) ? allData.orders : [];
+      setStatusCounts({
+        pending: all.filter((o) => o.status === "pending").length,
+        "in transit": all.filter((o) => o.status === "in transit").length,
+        delivered: all.filter((o) => o.status === "delivered").length,
+      });
     } catch {
       if (silent) toast.error("Failed to refresh orders");
       setOrders([]);
@@ -264,19 +272,19 @@ export default function OrderManagement() {
         />
         <StatCard
           label="Pending"
-          value={orders.filter((o) => o.status === "pending").length}
+          value={statusCounts["pending"]}
           icon={Clock}
           color="bg-amber-400"
         />
         <StatCard
           label="In Transit"
-          value={orders.filter((o) => o.status === "in transit").length}
+          value={statusCounts["in transit"]}
           icon={Truck}
           color="bg-purple-500"
         />
         <StatCard
           label="Delivered"
-          value={orders.filter((o) => o.status === "delivered").length}
+          value={statusCounts["delivered"]}
           icon={CheckCircle}
           color="bg-green-500"
         />

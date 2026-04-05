@@ -289,11 +289,15 @@ export default function LogisticsHistory() {
   const [activeFilter, setActiveFilter] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  async function fetchOrders(page = currentPage, silent = false) {
+  async function fetchOrders(page = 1, filter = activeFilter, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const data = await orderAPI.getMyOrders({ page, limit: ITEMS_PER_PAGE });
+      const data = await orderAPI.getMyOrders({
+        page,
+        limit: ITEMS_PER_PAGE,
+        status: filter,
+      });
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       if (data.pagination) setPagination(data.pagination);
     } catch {
@@ -305,11 +309,13 @@ export default function LogisticsHistory() {
   }
 
   useEffect(() => {
-    fetchOrders(currentPage);
+    fetchOrders(currentPage, activeFilter);
   }, [currentPage]);
+
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeFilter, searchQuery]);
+    fetchOrders(1, activeFilter);
+  }, [activeFilter]);
 
   async function handleStatusUpdate(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
@@ -329,19 +335,17 @@ export default function LogisticsHistory() {
   }
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      const matchesFilter = activeFilter === "all" || o.status === activeFilter;
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
+    const q = searchQuery.toLowerCase();
+    if (!q) return orders;
+    return orders.filter(
+      (o) =>
         o.orderId.toLowerCase().includes(q) ||
         o.productDetails.toLowerCase().includes(q) ||
         o.routeFrom.toLowerCase().includes(q) ||
         o.routeTo.toLowerCase().includes(q) ||
-        o.manufacturer.companyName.toLowerCase().includes(q);
-      return matchesFilter && matchesSearch;
-    });
-  }, [orders, activeFilter, searchQuery]);
+        o.manufacturer.companyName.toLowerCase().includes(q),
+    );
+  }, [orders, searchQuery]);
 
   if (isLoading) {
     return (
@@ -371,7 +375,7 @@ export default function LogisticsHistory() {
           </p>
         </div>
         <button
-          onClick={() => fetchOrders(currentPage, true)}
+          onClick={() => fetchOrders(currentPage, activeFilter, true)}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
         >
@@ -399,10 +403,8 @@ export default function LogisticsHistory() {
 
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {FILTER_TABS.map((tab) => {
-            const count =
-              tab.value === "all"
-                ? orders.length
-                : orders.filter((o) => o.status === tab.value).length;
+            const isActive = activeFilter === tab.value;
+            const count = isActive ? pagination.total : null;
             return (
               <button
                 key={tab.value}
@@ -414,7 +416,7 @@ export default function LogisticsHistory() {
                 }`}
               >
                 {tab.label}
-                {count > 0 && (
+                {count !== null && count > 0 && (
                   <span
                     className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
                       activeFilter === tab.value

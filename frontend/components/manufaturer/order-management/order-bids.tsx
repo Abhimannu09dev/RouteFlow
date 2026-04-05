@@ -9,12 +9,10 @@ import {
   Package,
   MapPin,
   ChevronRight,
-  DollarSign,
   Clock,
   CheckCircle,
   Search,
   RefreshCw,
-  Trophy,
 } from "lucide-react";
 
 //  Types
@@ -180,7 +178,7 @@ export default function ManufacturerBids() {
     else setIsRefreshing(true);
 
     try {
-      const data = await orderAPI.getOrders();
+      const data = await orderAPI.getOrders({ page: 1, limit: 1000 });
       const orders: Order[] = Array.isArray(data.orders) ? data.orders : [];
 
       // Fetch offers for all orders in parallel
