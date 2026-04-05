@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, Package, Gavel, Truck, X } from "lucide-react";
 import { io, Socket } from "socket.io-client";
+import { toast } from "react-toastify";
 
 type Notification = {
   _id: string;
@@ -98,6 +99,14 @@ export default function NotificationPanel({ role }: Props) {
       // Prepend new notification and increment unread count
       setNotifications((prev) => [notif, ...prev]);
       setUnreadCount((prev) => prev + 1);
+      // Show toast so user is alerted even when panel is closed
+      toast.info(notif.title, {
+        position: "top-right",
+        autoClose: 4000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
     });
 
     return () => {

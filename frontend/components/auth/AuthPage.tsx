@@ -136,7 +136,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
         }
         const response = await authAPI.login(formData.email, formData.password);
         toast.success("Login successful!");
-        router.push(`/${response.user.role}/dashboard`);
+        setTimeout(() => router.push(`/${response.user.role}/dashboard`), 1500);
       } else if (authType === "sign-up") {
         if (
           !formData.companyName?.trim() ||
@@ -164,7 +164,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
 
         toast.success("Registration successful! Check your email for OTP.");
         sessionStorage.setItem("verifyEmail", formData.email);
-        router.push("/auth/verify-otp");
+        setTimeout(() => router.push("/auth/verify-otp"), 1500);
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");

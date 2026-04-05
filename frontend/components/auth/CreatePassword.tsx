@@ -46,7 +46,7 @@ const CreatePassword = () => {
 
       await authAPI.resetPassword(token, password, confirmPassword);
       toast.success("Password reset successfully!");
-      router.push("/auth?action=sign-in");
+      setTimeout(() => router.push("/auth?action=sign-in"), 1500);
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to reset password";
@@ -114,11 +114,11 @@ const CreatePassword = () => {
       </form>
 
       <div className="w-full flex items-center justify-center gap-2">
-        <div className="w-full h-[1px] bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300"></div>
         <p className="text-[#C6C6C6E5] text-xs text-nowrap my-2">
           Changed your mind?
         </p>
-        <div className="w-full h-[1px] bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300"></div>
       </div>
       <div className="w-full flex items-center justify-center gap-2">
         <Link
