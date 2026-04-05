@@ -7,8 +7,18 @@ import { Search, RefreshCw, Building2 } from "lucide-react";
 import { type User, FILTER_TABS, ROLE_TABS } from "./types";
 import RejectModal from "./RejectModal";
 import UserRow from "./UserRow";
+import Pagination from "@/components/shared/pagination";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+const ITEMS_PER_PAGE = 10;
 
 async function apiFetch(path: string, options: RequestInit = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
@@ -25,6 +35,13 @@ function UserManagementContent() {
   const searchParams = useSearchParams();
 
   const [users, setUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -37,7 +54,7 @@ function UserManagementContent() {
   const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "");
 
   const fetchUsers = useCallback(
-    async (silent = false) => {
+    async (page = currentPage, silent = false) => {
       if (!silent) setIsLoading(true);
       else setIsRefreshing(true);
 
@@ -46,9 +63,12 @@ function UserManagementContent() {
         if (statusFilter) params.set("status", statusFilter);
         if (roleFilter) params.set("role", roleFilter);
         if (searchQuery) params.set("search", searchQuery);
+        params.set("page", String(page));
+        params.set("limit", String(ITEMS_PER_PAGE));
 
         const data = await apiFetch(`/admin/users?${params.toString()}`);
         setUsers(Array.isArray(data.users) ? data.users : []);
+        if (data.pagination) setPagination(data.pagination);
       } catch {
         if (silent) toast.error("Failed to refresh");
       } finally {
@@ -56,12 +76,15 @@ function UserManagementContent() {
         setIsRefreshing(false);
       }
     },
-    [statusFilter, roleFilter, searchQuery],
+    [statusFilter, roleFilter, searchQuery, currentPage],
   );
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchUsers(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, roleFilter, searchQuery]);
 
   async function handleApprove(userId: string) {
     setActionId(userId);
@@ -75,8 +98,8 @@ function UserManagementContent() {
             : u,
         ),
       );
-    } catch (error: any) {
-      toast.error(error.message || "Failed to approve");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to approve");
     } finally {
       setActionId(null);
     }
@@ -99,8 +122,8 @@ function UserManagementContent() {
         ),
       );
       setRejectTarget(null);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to reject");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to reject");
     } finally {
       setIsRejecting(false);
     }
@@ -132,7 +155,6 @@ function UserManagementContent() {
 
   return (
     <>
-      {/* Reject modal — rendered at top level so it overlays everything */}
       {rejectTarget && (
         <RejectModal
           user={rejectTarget}
@@ -143,7 +165,6 @@ function UserManagementContent() {
       )}
 
       <div className="flex flex-col gap-5">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-[#252C32]">
@@ -159,7 +180,7 @@ function UserManagementContent() {
             </p>
           </div>
           <button
-            onClick={() => fetchUsers(true)}
+            onClick={() => fetchUsers(currentPage, true)}
             disabled={isRefreshing}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] bg-white text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
           >
@@ -172,7 +193,6 @@ function UserManagementContent() {
         </div>
 
         <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
-          {/* Search */}
           <div className="p-4 border-b border-[#F5F5F5]">
             <div className="relative max-w-sm">
               <Search
@@ -189,7 +209,6 @@ function UserManagementContent() {
             </div>
           </div>
 
-          {/* Filter tabs */}
           <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
             {FILTER_TABS.map((tab) => (
               <button
@@ -220,7 +239,6 @@ function UserManagementContent() {
             ))}
           </div>
 
-          {/* User list */}
           {users.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
@@ -245,16 +263,16 @@ function UserManagementContent() {
             ))
           )}
 
-          {/* Footer count */}
-          {users.length > 0 && (
-            <div className="px-5 py-3 border-t border-[#F5F5F5]">
-              <p className="text-xs text-[#838383]">
-                Showing{" "}
-                <span className="font-medium text-[#252C32]">
-                  {users.length}
-                </span>{" "}
-                companies
-              </p>
+          {pagination.totalPages > 1 && (
+            <div className="px-4 border-t border-[#F5F5F5]">
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                totalItems={pagination.total}
+                itemsPerPage={ITEMS_PER_PAGE}
+                itemLabel="companies"
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             </div>
           )}
         </div>

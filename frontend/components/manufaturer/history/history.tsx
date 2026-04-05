@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { orderAPI } from "@/lib/api";
+import { orderAPI, type PaginationMeta } from "@/lib/api";
+import Pagination from "@/components/shared/pagination";
 import {
   Package,
   CheckCircle,
@@ -37,10 +38,7 @@ type Order = {
   additionalInfo?: string;
   createdAt: string;
   updatedAt: string;
-  logistics?: {
-    companyName: string;
-    email: string;
-  } | null;
+  logistics?: { companyName: string; email: string } | null;
 };
 
 const STATUS_CONFIG: Record<
@@ -86,6 +84,8 @@ const FILTER_TABS = [
   { label: "Cancelled", value: "cancelled" },
 ];
 
+const ITEMS_PER_PAGE = 10;
+
 function StatusBadge({ status }: { status: string }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   const Icon = cfg.icon;
@@ -112,7 +112,6 @@ function OrderRow({ order }: { order: Order }) {
 
   return (
     <div className="border-b border-[#F5F5F5] last:border-0">
-      {/* Collapsed row */}
       <div
         className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAFA] cursor-pointer transition"
         onClick={() => setExpanded((p) => !p)}
@@ -145,7 +144,6 @@ function OrderRow({ order }: { order: Order }) {
         </div>
       </div>
 
-      {/* Expanded detail */}
       {expanded && (
         <div className="px-5 pb-5 bg-[#FAFAFA] border-t border-[#F5F5F5]">
           <div className="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
@@ -178,7 +176,6 @@ function OrderRow({ order }: { order: Order }) {
             </div>
           </div>
 
-          {/* Logistics partner */}
           {order.logistics ? (
             <div className="flex items-center gap-2 px-3 py-2.5 bg-white border border-[#E5E9EB] rounded-xl mb-3">
               <Building2 size={14} className="text-primary shrink-0" />
@@ -197,7 +194,6 @@ function OrderRow({ order }: { order: Order }) {
             </p>
           )}
 
-          {/* Additional info */}
           {order.additionalInfo && (
             <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 leading-relaxed">
               📝 {order.additionalInfo}
@@ -211,19 +207,25 @@ function OrderRow({ order }: { order: Order }) {
 
 export default function ManufacturerHistory() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
 
-  async function fetchOrders(silent = false) {
+  async function fetchOrders(page = currentPage, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const data = await orderAPI.getMyOrders();
-      const all = Array.isArray(data.orders) ? data.orders : [];
-      // History = all orders except pure pending with no partner
-      setOrders(all);
+      const data = await orderAPI.getMyOrders({ page, limit: ITEMS_PER_PAGE });
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      if (data.pagination) setPagination(data.pagination);
     } catch {
       setOrders([]);
     } finally {
@@ -233,8 +235,11 @@ export default function ManufacturerHistory() {
   }
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(currentPage);
+  }, [currentPage]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeFilter, searchQuery]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -269,7 +274,6 @@ export default function ManufacturerHistory() {
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#252C32]">
@@ -280,7 +284,7 @@ export default function ManufacturerHistory() {
           </p>
         </div>
         <button
-          onClick={() => fetchOrders(true)}
+          onClick={() => fetchOrders(currentPage, true)}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] bg-white text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
         >
@@ -290,7 +294,6 @@ export default function ManufacturerHistory() {
       </div>
 
       <div className="bg-white rounded-2xl border border-[#E5E9EB] overflow-hidden">
-        {/* Search */}
         <div className="p-4 border-b border-[#F5F5F5]">
           <div className="relative max-w-sm">
             <Search
@@ -307,7 +310,6 @@ export default function ManufacturerHistory() {
           </div>
         </div>
 
-        {/* Filter tabs */}
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {FILTER_TABS.map((tab) => {
             const count =
@@ -341,7 +343,6 @@ export default function ManufacturerHistory() {
           })}
         </div>
 
-        {/* Orders */}
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="w-14 h-14 rounded-2xl bg-[#F5F5F5] flex items-center justify-center mb-3">
@@ -364,20 +365,16 @@ export default function ManufacturerHistory() {
           ))
         )}
 
-        {/* Footer */}
-        {filteredOrders.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#F5F5F5]">
-            <p className="text-xs text-[#838383]">
-              Showing{" "}
-              <span className="font-medium text-[#252C32]">
-                {filteredOrders.length}
-              </span>{" "}
-              of{" "}
-              <span className="font-medium text-[#252C32]">
-                {orders.length}
-              </span>{" "}
-              orders
-            </p>
+        {pagination.totalPages > 1 && (
+          <div className="px-4 border-t border-[#F5F5F5]">
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.total}
+              itemsPerPage={ITEMS_PER_PAGE}
+              itemLabel="orders"
+              onPageChange={(page) => setCurrentPage(page)}
+            />
           </div>
         )}
       </div>

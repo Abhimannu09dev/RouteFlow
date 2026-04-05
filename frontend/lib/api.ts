@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-// Helper to reduce repetition
 async function apiFetch(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -17,7 +16,26 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   return data;
 }
 
-//  Auth
+export type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type PaginationParams = {
+  page?: number;
+  limit?: number;
+};
+
+function buildPaginationQuery(params?: PaginationParams): string {
+  if (!params) return "";
+  const qs = new URLSearchParams();
+  if (params.page) qs.set("page", String(params.page));
+  if (params.limit) qs.set("limit", String(params.limit));
+  const str = qs.toString();
+  return str ? `?${str}` : "";
+}
 
 export const authAPI = {
   register: (
@@ -66,8 +84,6 @@ export const authAPI = {
   me: () => apiFetch("/auth/me"),
 };
 
-//  Orders
-
 export type CreateOrderPayload = {
   productDetails: string;
   quantity: number;
@@ -81,6 +97,12 @@ export type CreateOrderPayload = {
   expectedPrice?: number;
 };
 
+export type OrdersResponse = {
+  success: boolean;
+  orders: any[];
+  pagination: PaginationMeta;
+};
+
 export const orderAPI = {
   createOrder: (payload: CreateOrderPayload) =>
     apiFetch("/create/order", {
@@ -88,9 +110,13 @@ export const orderAPI = {
       body: JSON.stringify(payload),
     }),
 
-  getOrders: () => apiFetch("/orders"),
+  // Manufacturer: their own orders | Logistics: available pending orders
+  getOrders: (params?: PaginationParams): Promise<OrdersResponse> =>
+    apiFetch(`/orders${buildPaginationQuery(params)}`),
 
-  getMyOrders: () => apiFetch("/my-orders"),
+  // Orders assigned to the logged-in user (history)
+  getMyOrders: (params?: PaginationParams): Promise<OrdersResponse> =>
+    apiFetch(`/my-orders${buildPaginationQuery(params)}`),
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
@@ -104,12 +130,16 @@ export const orderAPI = {
     }),
 };
 
-//  Price Offers
-
 export type SubmitOfferPayload = {
   proposedPrice: number;
   estimatedDeliveryDays: number;
   note?: string;
+};
+
+export type OffersResponse = {
+  success: boolean;
+  offers: any[];
+  pagination: PaginationMeta;
 };
 
 export const priceOfferAPI = {
@@ -120,8 +150,9 @@ export const priceOfferAPI = {
     }),
 
   getOffers: (orderId: string) => apiFetch(`/orders/${orderId}/offers`),
-  getMyOffers: (): Promise<{ success: boolean; offers: any[] }> =>
-    apiFetch("/orders/my-offers"),
+
+  getMyOffers: (params?: PaginationParams): Promise<OffersResponse> =>
+    apiFetch(`/orders/my-offers${buildPaginationQuery(params)}`),
 
   updateOffer: (
     orderId: string,
@@ -134,17 +165,11 @@ export const priceOfferAPI = {
     }),
 
   withdrawOffer: (orderId: string, offerId: string) =>
-    apiFetch(`/orders/${orderId}/offers/${offerId}`, {
-      method: "DELETE",
-    }),
+    apiFetch(`/orders/${orderId}/offers/${offerId}`, { method: "DELETE" }),
 
   acceptOffer: (orderId: string, offerId: string) =>
-    apiFetch(`/orders/${orderId}/offers/${offerId}/accept`, {
-      method: "PUT",
-    }),
+    apiFetch(`/orders/${orderId}/offers/${offerId}/accept`, { method: "PUT" }),
 };
-
-//  Chat
 
 export type Message = {
   _id: string;
@@ -176,13 +201,11 @@ export type Conversation = {
 };
 
 export const chatAPI = {
-  // All chat threads for the logged-in user
   getConversations: (): Promise<{
     success: boolean;
     conversations: Conversation[];
   }> => apiFetch("/chat/conversations"),
 
-  // Message history for a specific order (also marks as read)
   getMessages: (
     orderId: string,
   ): Promise<{
@@ -196,11 +219,9 @@ export const chatAPI = {
     };
   }> => apiFetch(`/chat/${orderId}/messages`),
 
-  // Total unread count across all chats — for navbar badge
   getUnreadCount: (): Promise<{ success: boolean; count: number }> =>
     apiFetch("/chat/unread-count"),
 
-  // File/image upload (plain text goes through socket)
   sendFile: async (
     orderId: string,
     receiverId: string,
@@ -219,16 +240,11 @@ export const chatAPI = {
     });
 
     const data = await response.json();
-
-    if (!response.ok) {
+    if (!response.ok)
       throw new Error(data.error || data.message || "File upload failed");
-    }
-
     return data;
   },
 };
-
-//  Settings
 
 export type NotificationPreferences = {
   emailNotifications: boolean;
@@ -246,7 +262,10 @@ export const settingsAPI = {
 
   updateNotificationPreferences: (
     prefs: NotificationPreferences,
-  ): Promise<{ success: boolean; preferences: NotificationPreferences }> =>
+  ): Promise<{
+    success: boolean;
+    preferences: NotificationPreferences;
+  }> =>
     apiFetch("/settings/notifications", {
       method: "PUT",
       body: JSON.stringify(prefs),
@@ -269,8 +288,6 @@ export const settingsAPI = {
     }),
 };
 
-//  Support Tickets
-
 export type SupportTicket = {
   _id: string;
   userId: string;
@@ -289,31 +306,39 @@ export const supportAPI = {
     subject: string,
     message: string,
     category: string,
-  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+  ): Promise<{
+    success: boolean;
+    ticket: SupportTicket;
+  }> =>
     apiFetch("/support", {
       method: "POST",
       body: JSON.stringify({ subject, message, category }),
     }),
 
-  getMyTickets: (): Promise<{ success: boolean; tickets: SupportTicket[] }> =>
-    apiFetch("/support/my-tickets"),
+  getMyTickets: (
+    params?: PaginationParams,
+  ): Promise<{
+    success: boolean;
+    tickets: SupportTicket[];
+    pagination: PaginationMeta;
+  }> => apiFetch(`/support/my-tickets${buildPaginationQuery(params)}`),
 };
 
-//  Admin Support Tickets
-
 export const adminSupportAPI = {
-  getAllTickets: (filters?: {
-    status?: string;
-    category?: string;
-  }): Promise<{
+  getAllTickets: (
+    filters?: { status?: string; category?: string } & PaginationParams,
+  ): Promise<{
     success: boolean;
     tickets: (SupportTicket & {
       userId: { _id: string; companyName: string; email: string; role: string };
     })[];
+    pagination: PaginationMeta;
   }> => {
     const params = new URLSearchParams();
     if (filters?.status) params.set("status", filters.status);
     if (filters?.category) params.set("category", filters.category);
+    if (filters?.page) params.set("page", String(filters.page));
+    if (filters?.limit) params.set("limit", String(filters.limit));
     const qs = params.toString();
     return apiFetch(`/admin/support-tickets${qs ? `?${qs}` : ""}`);
   },
@@ -321,12 +346,40 @@ export const adminSupportAPI = {
   updateTicket: (
     ticketId: string,
     updates: { status?: string; adminReply?: string },
-  ): Promise<{ success: boolean; ticket: SupportTicket }> =>
+  ): Promise<{
+    success: boolean;
+    ticket: SupportTicket;
+  }> =>
     apiFetch(`/admin/support-tickets/${ticketId}`, {
       method: "PUT",
       body: JSON.stringify(updates),
     }),
 };
+
+export const adminAPI = {
+  getUsers: (
+    filters?: {
+      status?: string;
+      role?: string;
+      search?: string;
+    } & PaginationParams,
+  ): Promise<{
+    success: boolean;
+    users: any[];
+    pagination: PaginationMeta;
+  }> => {
+    const params = new URLSearchParams();
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.role) params.set("role", filters.role);
+    if (filters?.search) params.set("search", filters.search);
+    if (filters?.page) params.set("page", String(filters.page));
+    if (filters?.limit) params.set("limit", String(filters.limit));
+    const qs = params.toString();
+    return apiFetch(`/admin/users${qs ? `?${qs}` : ""}`);
+  },
+};
+
+// ── Payments ──────────────────────────────────────────────────────────────────
 
 export type Payment = {
   _id: string;
@@ -348,6 +401,14 @@ export const paymentAPI = {
   ): Promise<{ success: boolean; payment: Payment | null }> =>
     apiFetch(`/payment/status/${orderId}`),
 
+  getMyPayments: (
+    params?: PaginationParams,
+  ): Promise<{
+    success: boolean;
+    payments: any[];
+    pagination: PaginationMeta;
+  }> => apiFetch(`/payment/my-payments${buildPaginationQuery(params)}`),
+
   initiateKhalti: (
     orderId: string,
   ): Promise<{
@@ -364,8 +425,11 @@ export const paymentAPI = {
   verifyKhalti: (
     pidx: string,
     paymentId: string,
-  ): Promise<{ success: boolean; status: string; transactionId: string }> =>
-    apiFetch(`/payment/khalti/verify?pidx=${pidx}&paymentId=${paymentId}`),
+  ): Promise<{
+    success: boolean;
+    status: string;
+    transactionId: string;
+  }> => apiFetch(`/payment/khalti/verify?pidx=${pidx}&paymentId=${paymentId}`),
 
   initiateEsewa: (
     orderId: string,

@@ -2,15 +2,25 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
-import { orderAPI, priceOfferAPI } from "@/lib/api";
+import { orderAPI, priceOfferAPI, type PaginationMeta } from "@/lib/api";
 import { Package, RefreshCw, Search } from "lucide-react";
+import Pagination from "@/components/shared/pagination";
 import OrderCard, { type Order, type MyOffer } from "./order-card";
 import SubmitOfferModal from "./submit-offer";
 
 type OfferMap = Record<string, MyOffer>;
 
+const ITEMS_PER_PAGE = 9; // 3-column grid looks best with 9
+
 export default function OrdersPlacement() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+  const [currentPage, setCurrentPage] = useState(1);
   const [offerMap, setOfferMap] = useState<OfferMap>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -22,15 +32,17 @@ export default function OrdersPlacement() {
     existingOffer: MyOffer | null;
   } | null>(null);
 
-  async function fetchOrders(silent = false) {
+  async function fetchOrders(page = currentPage, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
 
     try {
-      const data = await orderAPI.getOrders();
+      const data = await orderAPI.getOrders({ page, limit: ITEMS_PER_PAGE });
       const fetched: Order[] = Array.isArray(data.orders) ? data.orders : [];
       setOrders(fetched);
+      if (data.pagination) setPagination(data.pagination);
 
+      // Fetch my offer for each order on this page
       const results = await Promise.allSettled(
         fetched.map((o) => priceOfferAPI.getOffers(o.orderId)),
       );
@@ -53,8 +65,13 @@ export default function OrdersPlacement() {
   }
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    fetchOrders(currentPage);
+  }, [currentPage]);
+
+  // Reset to page 1 on search
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   function handleOfferSuccess(offer: MyOffer) {
     if (!activeModal) return;
@@ -127,7 +144,7 @@ export default function OrdersPlacement() {
             </p>
           </div>
           <button
-            onClick={() => fetchOrders(true)}
+            onClick={() => fetchOrders(currentPage, true)}
             disabled={isRefreshing}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
           >
@@ -156,9 +173,9 @@ export default function OrdersPlacement() {
           </div>
           <span className="text-xs text-[#838383] shrink-0">
             <span className="font-semibold text-[#252C32]">
-              {filteredOrders.length}
+              {pagination.total}
             </span>{" "}
-            order{filteredOrders.length !== 1 ? "s" : ""} available
+            order{pagination.total !== 1 ? "s" : ""} available
           </span>
         </div>
 
@@ -180,23 +197,39 @@ export default function OrdersPlacement() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredOrders.map((order) => (
-              <OrderCard
-                key={order._id}
-                order={order}
-                myOffer={offerMap[order.orderId] || null}
-                onBid={() =>
-                  setActiveModal({
-                    orderId: order.orderId,
-                    orderDetails: order.productDetails,
-                    expectedPrice: order.expectedPrice,
-                    existingOffer: offerMap[order.orderId] || null,
-                  })
-                }
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredOrders.map((order) => (
+                <OrderCard
+                  key={order._id}
+                  order={order}
+                  myOffer={offerMap[order.orderId] || null}
+                  onBid={() =>
+                    setActiveModal({
+                      orderId: order.orderId,
+                      orderDetails: order.productDetails,
+                      expectedPrice: order.expectedPrice,
+                      existingOffer: offerMap[order.orderId] || null,
+                    })
+                  }
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {pagination.totalPages > 1 && (
+              <div className="bg-white rounded-2xl border border-[#E5E9EB] px-4">
+                <Pagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.totalPages}
+                  totalItems={pagination.total}
+                  itemsPerPage={ITEMS_PER_PAGE}
+                  itemLabel="orders"
+                  onPageChange={(page) => setCurrentPage(page)}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </>
