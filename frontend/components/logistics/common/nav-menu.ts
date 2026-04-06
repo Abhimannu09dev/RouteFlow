@@ -51,7 +51,7 @@ export const secondarySidebarItems = [
   {
     labelKey: "nav.helpSupport",
     label: "Help & Support",
-    href: "/logistics/help",
+    href: "/logistics/support",
     icon: HelpCircle,
   },
   {

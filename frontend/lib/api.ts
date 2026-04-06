@@ -115,8 +115,17 @@ export const orderAPI = {
     apiFetch(`/orders${buildPaginationQuery(params)}`),
 
   // Orders assigned to the logged-in user (history)
-  getMyOrders: (params?: PaginationParams): Promise<OrdersResponse> =>
-    apiFetch(`/my-orders${buildPaginationQuery(params)}`),
+  getMyOrders: (
+    params?: PaginationParams & { status?: string },
+  ): Promise<OrdersResponse> => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.limit) qs.set("limit", String(params.limit));
+    if (params?.status && params.status !== "all")
+      qs.set("status", params.status);
+    const str = qs.toString();
+    return apiFetch(`/my-orders${str ? `?${str}` : ""}`);
+  },
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
@@ -379,7 +388,7 @@ export const adminAPI = {
   },
 };
 
-// ── Payments ──────────────────────────────────────────────────────────────────
+// Payments
 
 export type Payment = {
   _id: string;

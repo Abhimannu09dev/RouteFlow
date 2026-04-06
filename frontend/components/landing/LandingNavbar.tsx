@@ -11,11 +11,11 @@ export default function LandingNavbar() {
           {/* Logo and Company Name */}
           <Link href="/" className="flex items-center gap-3 group">
             <Image
-              src="/logo.png"
+              src="/Logo.png"
               alt="RouteFlow Logo"
               width={40}
               height={40}
-              className="transition-transform group-hover:scale-105"
+              className="transition-transform group-hover:scale-105 rounded-xl"
             />
             <div className="flex flex-col">
               <h1 className="text-xl font-semibold text-blackish">RouteFlow</h1>

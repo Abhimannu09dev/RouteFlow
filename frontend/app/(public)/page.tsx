@@ -7,8 +7,8 @@ const Homepage = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <LandingNavbar />
-      <main className="flex-1 bg-gradient-to-br from-green-50 via-white to-blue-50 py-6 md:py-8 lg:py-12">
-        <div className="flex flex-col items-center justify-center min-h-screen md:min-h-[100dvh] px-3 sm:px-4 md:px-6 overflow-hidden relative">
+      <main className="flex-1 bg-linear-to-br from-green-50 via-white to-blue-50 py-6 md:py-8 lg:py-12">
+        <div className="flex flex-col items-center justify-center min-h-screen md:min-h-dvh px-3 sm:px-4 md:px-6 overflow-hidden relative">
           {/* Decorative background elements */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none h-[150vh] w-full">
             <div className="absolute -top-32 -right-32 sm:-top-40 sm:-right-40 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-green-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
@@ -30,7 +30,7 @@ const Homepage = () => {
             {/* Main Heading */}
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight animate-fade-in-up">
               Optimize Your Delivery
-              <span className="block bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mt-2">
+              <span className="block bg-linear-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mt-2">
                 RouteFlow
               </span>
             </h1>
@@ -46,7 +46,7 @@ const Homepage = () => {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-3 md:pt-4 w-full animate-fade-in-up animation-delay-400">
               <Link
                 href="/auth?action=sign-up"
-                className="group relative w-full sm:w-auto px-4 sm:px-8 py-2.5 sm:py-4 bg-gradient-to-r from-green-600 to-blue-600 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
+                className="group relative w-full sm:w-auto px-4 sm:px-8 py-2.5 sm:py-4 bg-linear-to-r from-green-600 to-blue-600 text-white font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 overflow-hidden"
               >
                 <span className="relative z-10 flex items-center gap-2">
                   Get Started
@@ -64,7 +64,7 @@ const Homepage = () => {
                     />
                   </svg>
                 </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                <div className="absolute inset-0 bg-linear-to-r from-blue-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
               </Link>
 
               <Link

@@ -5,13 +5,10 @@ import {
   updateOffer,
   withdrawOffer,
   acceptOffer,
-  getMyOffers,
 } from "../controllers/priceOfferController.js";
 import { rolecheck } from "../middleware/auth.js";
 
 const router = Router();
-
-router.get("/my-offers", rolecheck(["logistics"]), getMyOffers);
 
 router.get("/:orderId/offers", getOffers);
 router.put(

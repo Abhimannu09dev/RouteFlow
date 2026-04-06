@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
 import { authAPI } from "@/lib/api";
 import "@/lib/i18n";
+import Image from "next/image";
 
 export default function DesktopSidebar({ pathname }: { pathname: string }) {
   const router = useRouter();
@@ -20,9 +21,13 @@ export default function DesktopSidebar({ pathname }: { pathname: string }) {
     <aside className="hidden lg:flex w-full h-full overflow-y-auto bg-[#F6F8F9] py-4 px-4 flex-col border-r border-[#E5E9EB]">
       {/* Logo */}
       <div className="flex items-center gap-2 mb-6 px-2">
-        <div className="w-8 h-8 rounded-lg bg-teal-500 flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-sm">R</span>
-        </div>
+        <Image
+          src="/Logo.png"
+          alt="logo"
+          width={40}
+          height={40}
+          className="rounded-xl"
+        />
         <span className="font-semibold text-[#252C32] text-sm">RouteFlow</span>
       </div>
 

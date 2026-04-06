@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   MapPin,
   Truck,
@@ -120,7 +121,9 @@ function ExpectedPriceDisplay({ price }: { price?: number | null }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 bg-[#F5F5F5] border border-[#E5E9EB] rounded-xl">
       <DollarSign size={13} className="text-[#838383]" />
-      <p className="text-xs text-[#838383]">No budget hint — bid competitively</p>
+      <p className="text-xs text-[#838383]">
+        No budget hint — bid competitively
+      </p>
     </div>
   );
 }
@@ -171,7 +174,10 @@ function ActionButtons({
   return (
     <div className="flex flex-col gap-2 pt-1 border-t border-[#F5F5F5]">
       <button
-        onClick={onBid}
+        onClick={(e) => {
+          e.stopPropagation();
+          onBid();
+        }}
         className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-primary text-primary hover:bg-primary hover:text-white text-sm font-medium rounded-xl transition"
       >
         {hasPendingBid ? (
@@ -195,10 +201,16 @@ function ActionButtons({
 }
 
 export default function OrderCard({ order, myOffer, onBid }: Props) {
+  const router = useRouter();
   const hasPendingBid = !!(myOffer && myOffer.status === "pending");
 
   return (
-    <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5 flex flex-col gap-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200">
+    <div
+      className="bg-white rounded-2xl border border-[#E5E9EB] p-5 flex flex-col gap-4 hover:border-primary/30 hover:shadow-sm transition-all duration-200 cursor-pointer"
+      onClick={() =>
+        router.push(`/logistics/orders-placement/${order.orderId}`)
+      }
+    >
       <OrderHeader order={order} />
       <OrderProduct order={order} />
       <OrderRoute order={order} />

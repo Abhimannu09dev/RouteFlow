@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useRef, ChangeEvent, KeyboardEvent, useState, useEffect } from "react";
@@ -74,7 +75,7 @@ const VerifyAuth = () => {
       await authAPI.verifyOtp(email, otp);
       toast.success("Email verified successfully!");
       sessionStorage.removeItem("verifyEmail");
-      router.push("/auth?action=sign-in");
+      setTimeout(() => router.push("/auth?action=sign-in"), 1500);
     } catch (error: any) {
       toast.error(error.message || "OTP verification failed");
     } finally {
@@ -120,11 +121,11 @@ const VerifyAuth = () => {
       </form>
 
       <div className="w-full flex items-center justify-center gap-2">
-        <div className="w-full h-[1px] bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300"></div>
         <p className="text-[#C6C6C6E5] text-xs text-nowrap my-2">
           Did&apos;t get the code?
         </p>
-        <div className="w-full h-[1px] bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300"></div>
       </div>
       <button
         onClick={handleResend}

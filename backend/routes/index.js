@@ -14,14 +14,15 @@ import { auth } from "../middleware/auth.js";
 const router = Router();
 
 router.use("/auth", authRouter);
-router.use("/orders", auth, priceOfferRoutes);
-router.use("/", auth, orderRoutes);
-router.use("/profile", auth, profileRoutes);
-router.use("/admin", auth, adminRoutes);
-router.use("/notifications", auth, notificationRoutes);
-router.use("/chat", auth, chatRoutes);
-router.use("/settings", auth, settingsRoutes);
-router.use("/support", auth, supportRoutes);
-router.use("/payment", auth, paymentRoutes);
+router.use(auth);
+router.use("/", orderRoutes);
+router.use("/orders", priceOfferRoutes);
+router.use("/profile", profileRoutes);
+router.use("/admin", adminRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/chat", chatRoutes);
+router.use("/settings", settingsRoutes);
+router.use("/support", supportRoutes);
+router.use("/payment", paymentRoutes);
 
 export default router;

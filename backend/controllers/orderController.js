@@ -146,9 +146,11 @@ const getMyOrders = async (req, res) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
     const role = req.user.role;
+    const statusFilter = req.query.status;
 
     if (role === "logistics") {
       const filter = { logistics: req.user.id };
+      if (statusFilter && statusFilter !== "all") filter.status = statusFilter;
       const [orders, total] = await Promise.all([
         Order.find(filter)
           .populate("manufacturer", "companyName email")
@@ -166,6 +168,7 @@ const getMyOrders = async (req, res) => {
 
     if (role === "manufacturer") {
       const filter = { manufacturer: req.user.id };
+      if (statusFilter && statusFilter !== "all") filter.status = statusFilter;
       const [orders, total] = await Promise.all([
         Order.find(filter)
           .populate("logistics", "companyName email")

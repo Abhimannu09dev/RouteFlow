@@ -1,10 +1,5 @@
-import { Suspense } from "react";
-import EsewaVerifyContent from "@/components/shared/payment/esewa/EsewaVerifyPage";
+import PaymentsPage from "@/components/shared/payment/PaymentsPage";
 
-export default function EsewaVerifyPage() {
-  return (
-    <Suspense fallback={<p>Loading...</p>}>
-      <EsewaVerifyContent />
-    </Suspense>
-  );
+export default function LogisticsPaymentsPage() {
+  return <PaymentsPage role="logistics" />;
 }
