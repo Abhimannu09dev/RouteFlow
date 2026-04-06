@@ -76,8 +76,8 @@ app.get("/auth/me", auth, async (req, res) => {
 app.post("/auth/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure: false, // set true in production (HTTPS)
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   });
 
   res.status(200).json({ message: "Logged out successfully" });
