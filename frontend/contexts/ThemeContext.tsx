@@ -20,26 +20,38 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "light";
 
-  // On mount, read saved preference or system preference
+  const saved = localStorage.getItem("rf-theme") as Theme | null;
+
+  if (saved === "dark" || saved === "light") {
+    return saved;
+  }
+
+  if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+
+  return "light";
+}
+
+export function ThemeProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   useEffect(() => {
-    const saved = localStorage.getItem("rf-theme") as Theme | null;
-    if (saved === "dark" || saved === "light") {
-      setTheme(saved);
-      document.documentElement.classList.toggle("dark", saved === "dark");
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
+    const root = document.documentElement;
+
+    if (theme === "dark") {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
     }
-  }, []);
+
+    localStorage.setItem("rf-theme", theme);
+  }, [theme]);
 
   function toggleTheme() {
-    const next: Theme = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.classList.toggle("dark", next === "dark");
-    localStorage.setItem("rf-theme", next);
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
   }
 
   return (
