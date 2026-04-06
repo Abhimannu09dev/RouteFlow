@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { orderAPI, type PaginationMeta } from "@/lib/api";
 import Pagination from "@/components/shared/pagination";
+import { Dropdown, type MenuProps } from "antd";
 import {
   Package,
   MapPin,
@@ -13,11 +15,9 @@ import {
   XCircle,
   RefreshCw,
   Search,
-  ChevronRight,
   Building2,
-  Hash,
-  Weight,
-  ChevronDown,
+  MoreVertical,
+  ExternalLink,
   Loader2,
 } from "lucide-react";
 
@@ -71,33 +71,6 @@ const STATUS_CONFIG: Record<
   },
 };
 
-const STATUS_TRANSITIONS: Record<
-  string,
-  { label: string; next: OrderStatus; color: string }[]
-> = {
-  accepted: [
-    {
-      label: "Mark as In Transit",
-      next: "in transit",
-      color: "bg-purple-500 hover:bg-purple-600",
-    },
-  ],
-  "in transit": [
-    {
-      label: "Mark as Delivered",
-      next: "delivered",
-      color: "bg-green-500 hover:bg-green-600",
-    },
-    {
-      label: "Cancel Order",
-      next: "cancelled",
-      color: "bg-red-400 hover:bg-red-500",
-    },
-  ],
-  delivered: [],
-  cancelled: [],
-};
-
 const FILTER_TABS: { label: string; value: "all" | OrderStatus }[] = [
   { label: "All", value: "all" },
   { label: "Accepted", value: "accepted" },
@@ -130,8 +103,7 @@ function OrderRow({
   onStatusUpdate: (orderId: string, status: OrderStatus) => void;
   updatingId: string | null;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const transitions = STATUS_TRANSITIONS[order.status] ?? [];
+  const router = useRouter();
   const isUpdating = updatingId === order.orderId;
 
   function formatDate(d: string) {
@@ -142,12 +114,59 @@ function OrderRow({
     });
   }
 
+  const menuItems: MenuProps["items"] = [
+    {
+      key: "view",
+      label: "View Details",
+      icon: <ExternalLink size={13} />,
+      onClick: () =>
+        router.push(`/logistics/orders-placement/${order.orderId}`),
+    },
+    ...(order.status === "accepted"
+      ? [
+          { type: "divider" as const },
+          {
+            key: "in-transit",
+            label: isUpdating ? "Updating..." : "Mark as In Transit",
+            icon: isUpdating ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <Truck size={13} />
+            ),
+            disabled: isUpdating,
+            onClick: () => onStatusUpdate(order.orderId, "in transit"),
+          },
+        ]
+      : []),
+    ...(order.status === "in transit"
+      ? [
+          { type: "divider" as const },
+          {
+            key: "delivered",
+            label: isUpdating ? "Updating..." : "Mark as Delivered",
+            icon: isUpdating ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : (
+              <CheckCircle size={13} />
+            ),
+            disabled: isUpdating,
+            onClick: () => onStatusUpdate(order.orderId, "delivered"),
+          },
+          {
+            key: "cancelled",
+            label: "Cancel Order",
+            icon: <XCircle size={13} />,
+            disabled: isUpdating,
+            danger: true,
+            onClick: () => onStatusUpdate(order.orderId, "cancelled"),
+          },
+        ]
+      : []),
+  ];
+
   return (
     <div className="border-b border-[#F5F5F5] last:border-0">
-      <div
-        className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAFA] cursor-pointer transition"
-        onClick={() => setExpanded((p) => !p)}
-      >
+      <div className="flex items-center gap-4 px-5 py-4 hover:bg-[#FAFAFA] transition">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="font-mono text-xs font-bold text-[#252C32]">
@@ -173,103 +192,20 @@ function OrderRow({
           <p className="text-xs text-[#838383] hidden sm:block">
             {formatDate(order.createdAt)}
           </p>
-          <ChevronDown
-            size={16}
-            className={`text-[#838383] transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-          />
+          <Dropdown
+            menu={{ items: menuItems }}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
+            <button
+              className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#838383] hover:text-[#252C32] transition"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical size={16} />
+            </button>
+          </Dropdown>
         </div>
       </div>
-
-      {expanded && (
-        <div className="px-5 pb-5 bg-[#FAFAFA] border-t border-[#F5F5F5]">
-          <div className="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-            <div>
-              <p className="text-xs text-[#838383]">Quantity</p>
-              <p className="text-sm font-medium text-[#252C32] flex items-center gap-1 mt-0.5">
-                <Hash size={12} className="text-primary" />
-                {order.quantity} units
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[#838383]">Weight</p>
-              <p className="text-sm font-medium text-[#252C32] flex items-center gap-1 mt-0.5">
-                <Weight size={12} className="text-primary" />
-                {order.weight} kg
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[#838383]">Vehicle</p>
-              <p className="text-sm font-medium text-[#252C32] flex items-center gap-1 mt-0.5">
-                <Truck size={12} className="text-primary" />
-                {order.vehicleType.replace("_", " ")}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-[#838383]">Last Updated</p>
-              <p className="text-sm font-medium text-[#252C32] mt-0.5">
-                {formatDate(order.updatedAt)}
-              </p>
-            </div>
-          </div>
-
-          {(order.invoiceNeeded || order.vatBillNeeded) && (
-            <div className="flex gap-2 mb-4">
-              {order.invoiceNeeded && (
-                <span className="text-xs px-2.5 py-1 bg-white border border-[#E5E9EB] rounded-lg text-[#5B6871]">
-                  Invoice Required
-                </span>
-              )}
-              {order.vatBillNeeded && (
-                <span className="text-xs px-2.5 py-1 bg-white border border-[#E5E9EB] rounded-lg text-[#5B6871]">
-                  VAT Bill Required
-                </span>
-              )}
-            </div>
-          )}
-
-          {order.additionalInfo && (
-            <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 mb-4 leading-relaxed">
-              📝 {order.additionalInfo}
-            </p>
-          )}
-
-          {transitions.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-[#E5E9EB]">
-              <p className="w-full text-xs text-[#838383] mb-1">
-                Update Status:
-              </p>
-              {transitions.map((t) => (
-                <button
-                  key={t.next}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStatusUpdate(order.orderId, t.next);
-                  }}
-                  disabled={isUpdating}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-white text-xs font-medium transition disabled:opacity-60 ${t.color}`}
-                >
-                  {isUpdating ? (
-                    <Loader2 size={13} className="animate-spin" />
-                  ) : (
-                    <ChevronRight size={13} />
-                  )}
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {transitions.length === 0 && (
-            <div
-              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border mt-2 ${STATUS_CONFIG[order.status].bg} ${STATUS_CONFIG[order.status].color}`}
-            >
-              {order.status === "delivered"
-                ? "✅ This order has been delivered successfully."
-                : "❌ This order was cancelled."}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -289,15 +225,11 @@ export default function LogisticsHistory() {
   const [activeFilter, setActiveFilter] = useState<"all" | OrderStatus>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  async function fetchOrders(page = 1, filter = activeFilter, silent = false) {
+  async function fetchOrders(page = currentPage, silent = false) {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const data = await orderAPI.getMyOrders({
-        page,
-        limit: ITEMS_PER_PAGE,
-        status: filter,
-      });
+      const data = await orderAPI.getMyOrders({ page, limit: ITEMS_PER_PAGE });
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       if (data.pagination) setPagination(data.pagination);
     } catch {
@@ -309,13 +241,11 @@ export default function LogisticsHistory() {
   }
 
   useEffect(() => {
-    fetchOrders(currentPage, activeFilter);
+    fetchOrders(currentPage);
   }, [currentPage]);
-
   useEffect(() => {
     setCurrentPage(1);
-    fetchOrders(1, activeFilter);
-  }, [activeFilter]);
+  }, [activeFilter, searchQuery]);
 
   async function handleStatusUpdate(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
@@ -335,17 +265,19 @@ export default function LogisticsHistory() {
   }
 
   const filteredOrders = useMemo(() => {
-    const q = searchQuery.toLowerCase();
-    if (!q) return orders;
-    return orders.filter(
-      (o) =>
+    return orders.filter((o) => {
+      const matchesFilter = activeFilter === "all" || o.status === activeFilter;
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        !q ||
         o.orderId.toLowerCase().includes(q) ||
         o.productDetails.toLowerCase().includes(q) ||
         o.routeFrom.toLowerCase().includes(q) ||
         o.routeTo.toLowerCase().includes(q) ||
-        o.manufacturer.companyName.toLowerCase().includes(q),
-    );
-  }, [orders, searchQuery]);
+        o.manufacturer.companyName.toLowerCase().includes(q);
+      return matchesFilter && matchesSearch;
+    });
+  }, [orders, activeFilter, searchQuery]);
 
   if (isLoading) {
     return (
@@ -375,7 +307,7 @@ export default function LogisticsHistory() {
           </p>
         </div>
         <button
-          onClick={() => fetchOrders(currentPage, activeFilter, true)}
+          onClick={() => fetchOrders(currentPage, true)}
           disabled={isRefreshing}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#E5E9EB] text-sm text-[#5B6871] hover:bg-[#F5F5F5] transition disabled:opacity-50"
         >
@@ -403,8 +335,10 @@ export default function LogisticsHistory() {
 
         <div className="flex gap-1 px-4 py-2 border-b border-[#F5F5F5] overflow-x-auto">
           {FILTER_TABS.map((tab) => {
-            const isActive = activeFilter === tab.value;
-            const count = isActive ? pagination.total : null;
+            const count =
+              tab.value === "all"
+                ? orders.length
+                : orders.filter((o) => o.status === tab.value).length;
             return (
               <button
                 key={tab.value}
@@ -416,7 +350,7 @@ export default function LogisticsHistory() {
                 }`}
               >
                 {tab.label}
-                {count !== null && count > 0 && (
+                {count > 0 && (
                   <span
                     className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
                       activeFilter === tab.value

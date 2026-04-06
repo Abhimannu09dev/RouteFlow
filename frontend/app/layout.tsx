@@ -4,6 +4,7 @@ import "@/app/globals.css";
 import NextTopLoader from "nextjs-toploader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 export const metadata: Metadata = {
   title: "RouteFlow",
@@ -39,18 +40,20 @@ export default function RootLayout({
           showAtBottom={false}
         />
 
-        {children}
+        <ThemeProvider>
+          {children}
 
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop
-          closeOnClick
-          pauseOnHover
-          draggable
-          theme="light"
-        />
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            draggable
+            theme="light"
+          />
+        </ThemeProvider>
       </body>
     </html>
   );

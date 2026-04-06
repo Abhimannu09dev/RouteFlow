@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { User } from "lucide-react";
+import { User, Sun, Moon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   primarySidebarItems,
@@ -12,10 +12,12 @@ import NotificationPanel from "@/components/shared/notification-panel";
 import ChatBadge from "@/components/shared/chat-badge";
 import { authAPI } from "@/lib/api";
 import "@/lib/i18n";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const Navbar = ({ pathname }: { pathname: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
   const userRef = useRef<HTMLDivElement>(null);
   const [showUser, setShowUser] = useState(false);
 
@@ -45,6 +47,15 @@ const Navbar = ({ pathname }: { pathname: string }) => {
         <div className="flex flex-row items-center gap-3 text-[#5B6871] select-none">
           <ChatBadge role="manufacturer" />
           <NotificationPanel role="manufacturer" />
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#5B6871] transition"
+            title={
+              theme === "light" ? "Switch to dark mode" : "Switch to light mode"
+            }
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
           <div className="relative" ref={userRef}>
             <button
               onClick={() => setShowUser((prev) => !prev)}

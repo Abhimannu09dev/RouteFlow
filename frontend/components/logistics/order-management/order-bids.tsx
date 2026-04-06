@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { priceOfferAPI } from "@/lib/api";
 import {
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   Trophy,
   Building2,
+  ExternalLink,
 } from "lucide-react";
 
 //  Types
@@ -86,8 +88,10 @@ function OfferStatusBadge({ status }: { status: string }) {
 //  Bid Row
 
 function BidRow({ offer }: { offer: MyOffer }) {
+  const router = useRouter();
   const order = offer.order;
   const isAccepted = offer.status === "accepted";
+  const showDetails = offer.status === "pending" || offer.status === "accepted";
 
   const priceDiff =
     order.expectedPrice != null
@@ -109,7 +113,7 @@ function BidRow({ offer }: { offer: MyOffer }) {
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        {/* Order info */}
+        {/* LEFT: Order info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-mono text-xs font-bold text-[#252C32]">
@@ -123,9 +127,11 @@ function BidRow({ offer }: { offer: MyOffer }) {
               </span>
             )}
           </div>
+
           <p className="text-sm font-medium text-[#252C32] truncate">
             {order.productDetails}
           </p>
+
           <div className="flex items-center gap-3 mt-0.5 text-xs text-[#838383] flex-wrap">
             <span className="flex items-center gap-1">
               <MapPin size={10} />
@@ -138,8 +144,8 @@ function BidRow({ offer }: { offer: MyOffer }) {
           </div>
         </div>
 
-        {/* Price comparison */}
-        <div className="flex items-center gap-6 shrink-0">
+        {/* RIGHT: Price + meta */}
+        <div className="flex items-center gap-4 shrink-0">
           <div className="text-right">
             <p className="text-[10px] text-[#838383]">Expected</p>
             <p className="text-sm font-semibold text-[#252C32]">
@@ -180,9 +186,22 @@ function BidRow({ offer }: { offer: MyOffer }) {
               {formatDate(offer.createdAt)}
             </p>
           </div>
+
+          {showDetails && (
+            <button
+              onClick={() =>
+                router.push(`/logistics/orders-placement/${order.orderId}`)
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-[#E5E9EB] text-[#5B6871] hover:bg-[#F5F5F5] hover:text-primary transition shrink-0"
+            >
+              <ExternalLink size={12} />
+              View Details
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Note */}
       {offer.note && (
         <p className="text-xs text-[#838383] bg-white border border-[#E5E9EB] rounded-xl px-3 py-2 mt-3 leading-relaxed">
           📝 {offer.note}
@@ -191,7 +210,6 @@ function BidRow({ offer }: { offer: MyOffer }) {
     </div>
   );
 }
-
 //  Main Component
 
 export default function LogisticsBids() {
