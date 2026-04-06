@@ -1,22 +1,204 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #00b7b5;
-  --color-primary-dark: #009a99;
+    --color-primary: #00b7b5;
+    --color-primary-dark: #009a99;
 }
 
 @utility no-scrollbar {
-  @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+    @apply [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
 }
 
 @utility component-px {
-  @apply px-8 md:px-16 lg:px-32;
+    @apply px-8 md:px-16 lg:px-32;
 }
 
 @utility component-py {
-  @apply py-8 lg:py-10;
+    @apply py-8 lg:py-10;
 }
 
 * {
-  scroll-behavior: smooth;
+    scroll-behavior: smooth;
+}
+
+/*  Light theme (default)  */
+:root {
+    --rf-bg-page: #f1f1f1;
+    --rf-bg-card: #ffffff;
+    --rf-bg-sidebar: #f6f8f9;
+    --rf-bg-muted: #f5f5f5;
+    --rf-bg-subtle: #fafafa;
+    --rf-bg-input: #f5f5f5;
+
+    --rf-border: #e5e9eb;
+    --rf-border-muted: #f5f5f5;
+
+    --rf-text-primary: #252c32;
+    --rf-text-secondary: #5b6871;
+    --rf-text-muted: #838383;
+    --rf-text-subtle: #9aa6ac;
+    --rf-text-disabled: #b0b7c3;
+}
+
+/*  Dark theme  */
+html.dark {
+    --rf-bg-page: #141413;
+    --rf-bg-card: #272727;
+    --rf-bg-sidebar: #1e1e1d;
+    --rf-bg-muted: #2f2f2e;
+    --rf-bg-subtle: #2a2a29;
+    --rf-bg-input: #2f2f2e;
+
+    --rf-border: #3a3a38;
+    --rf-border-muted: #2f2f2e;
+
+    --rf-text-primary: #e3e2c3;
+    --rf-text-secondary: #c1c1a9;
+    --rf-text-muted: #8b8a87;
+    --rf-text-subtle: #6a6a67;
+    --rf-text-disabled: #6a6a67;
+}
+
+/* Page background */
+html.dark body {
+    background-color: var(--rf-bg-page) !important;
+}
+
+/* bg-white → card bg */
+html.dark .bg-white {
+    background-color: var(--rf-bg-card) !important;
+}
+
+/* bg-[#F1F1F1] page bg */
+html.dark .bg-\[\#F1F1F1\] {
+    background-color: var(--rf-bg-page) !important;
+}
+
+/* bg-[#F5F5F5] muted/input bg */
+html.dark .bg-\[\#F5F5F5\],
+html.dark .bg-\[\#F5F7F8\],
+html.dark .bg-\[\#F8FAFB\],
+html.dark .bg-\[\#F6F8F9\],
+html.dark .bg-\[\#FAFAFA\],
+html.dark .bg-\[\#F9FAFB\] {
+    background-color: var(--rf-bg-muted) !important;
+}
+
+/* text-[#252C32] → primary text */
+html.dark .text-\[\#252C32\] {
+    color: var(--rf-text-primary) !important;
+}
+
+/* text-[#5B6871] → secondary text */
+html.dark .text-\[\#5B6871\] {
+    color: var(--rf-text-secondary) !important;
+}
+
+/* text-[#838383] → muted text */
+html.dark .text-\[\#838383\] {
+    color: var(--rf-text-muted) !important;
+}
+
+/* text-[#9AA6AC] → subtle text */
+html.dark .text-\[\#9AA6AC\] {
+    color: var(--rf-text-subtle) !important;
+}
+
+/* text-[#B0B7C3] → disabled text */
+html.dark .text-\[\#B0B7C3\] {
+    color: var(--rf-text-disabled) !important;
+}
+
+/* border-[#E5E9EB] → border */
+html.dark .border-\[\#E5E9EB\] {
+    border-color: var(--rf-border) !important;
+}
+
+/* border-[#F5F5F5] → muted border */
+html.dark .border-\[\#F5F5F5\] {
+    border-color: var(--rf-border-muted) !important;
+}
+
+/* divide colors */
+html.dark .divide-\[\#F5F5F5\] > * + * {
+    border-color: var(--rf-border-muted) !important;
+}
+
+/* placeholder text */
+html.dark .placeholder\:\text-\[\#B0B7C3\]::placeholder,
+html.dark .placeholder\:\text-\[\#9AA6AC\]::placeholder {
+    color: var(--rf-text-disabled) !important;
+}
+
+/* input / select / textarea backgrounds */
+html.dark input,
+html.dark textarea,
+html.dark select {
+    background-color: var(--rf-bg-input);
+    color: var(--rf-text-primary);
+    border-color: var(--rf-border);
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+    color: var(--rf-text-disabled);
+}
+
+/* Hover bg-white */
+html.dark .hover\:bg-white:hover {
+    background-color: var(--rf-bg-muted) !important;
+}
+
+/* hover bg-[#F5F5F5] */
+html.dark .hover\:bg-\[\#F5F5F5\]:hover {
+    background-color: var(--rf-bg-muted) !important;
+}
+
+/* hover bg-[#FAFAFA] */
+html.dark .hover\:bg-\[\#FAFAFA\]:hover {
+    background-color: var(--rf-bg-subtle) !important;
+}
+
+/*  Order card: route strip (primary/5 bg)  */
+html.dark .bg-primary\/5 {
+    background-color: rgba(0, 183, 181, 0.08) !important;
+}
+html.dark .border-primary\/15 {
+    border-color: rgba(0, 183, 181, 0.2) !important;
+}
+
+/*  Order card: expected price section (no-budget hint)  */
+html.dark .bg-\[\#F5F5F5\].border-\[\#E5E9EB\] {
+    background-color: var(--rf-bg-muted) !important;
+    border-color: var(--rf-border) !important;
+}
+
+/*  Bids: Won row (green-50/50 → dark green tint)  */
+html.dark .bg-green-50\/50 {
+    background-color: rgba(34, 197, 94, 0.08) !important;
+}
+
+/*  Bids: stat card bg-[#252C32] (dark chip) stays readable  */
+html.dark .bg-\[\#252C32\] {
+    background-color: #3a3a38 !important;
+}
+
+/*  Chat: left panel needs slightly lighter bg than page  */
+html.dark .bg-\[\#F8FAFB\] {
+    background-color: var(--rf-bg-page) !important;
+}
+
+/*  Auth page wrapper  */
+html.dark .bg-gray-50 {
+    background-color: var(--rf-bg-page) !important;
+}
+
+html.dark .shadow-lg,
+html.dark .shadow-2xl {
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Scrollbar styling for dark mode */
+html.dark * {
+    scrollbar-color: #3a3a38 #141413;
 }

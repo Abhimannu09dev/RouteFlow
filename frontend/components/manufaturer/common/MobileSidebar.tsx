@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Drawer } from "antd";
 import Link from "next/link";
 import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
-import { LogOut, Menu, Truck } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
+import Image from "next/image";
 
 const MobileSidebar = ({ pathname }: { pathname: string }) => {
   const [open, setOpen] = useState(false);
@@ -26,10 +27,13 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
         <Menu size={24} onClick={showDrawer} className="cursor-pointer" />
 
         {/* Logo Section */}
-        <div className="flex items-center gap-2">
-          <Truck className="p-1.5 rounded-md bg-primary/10 text-primary w-8 h-8" />
-          <p className="text-lg font-medium text-gray-900">RouteFlow</p>
-        </div>
+        <Image
+          src="/Logo.png"
+          alt="logo"
+          width={40}
+          height={40}
+          className="rounded-xl"
+        />
       </div>
 
       <Drawer
