@@ -5,7 +5,7 @@ import Link from "next/link";
 
 export default function LandingNavbar() {
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+    <nav className="bg-white dark:bg-[#272727] border-b border-gray-200 dark:border-[#3a3a38] sticky top-0 z-50 shadow-sm dark:shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
       <div className="component-px py-4">
         <div className="flex items-center justify-between">
           {/* Logo and Company Name */}
@@ -27,12 +27,6 @@ export default function LandingNavbar() {
 
           {/* Auth Buttons */}
           <div className="flex items-center gap-3">
-            {/* <Link
-              href="/auth?action=sign-in"
-              className="px-4 py-2 text-sm font-medium text-grayish hover:text-blackish transition-colors"
-            >
-              Sign In
-            </Link> */}
             <Link
               href="/auth?action=sign-up"
               className="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary-dark transition-colors rounded-lg"

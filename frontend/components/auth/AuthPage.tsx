@@ -175,7 +175,7 @@ const AuthForm = ({ action }: { action: string | null }) => {
 
   return (
     <div className="w-full flex flex-col items-center gap-1">
-      <p className="text-lg font-medium">
+      <p className="text-blackish text-lg font-medium">
         {actions.find((a) => a.value === authType)?.title}
       </p>
       <p className="text-blackish text-sm">

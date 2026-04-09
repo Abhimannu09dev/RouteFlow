@@ -5,21 +5,21 @@ import Link from "next/link";
 
 const Homepage = () => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-[#141413]">
       <LandingNavbar />
-      <main className="flex-1 bg-linear-to-br from-green-50 via-white to-blue-50 py-6 md:py-8 lg:py-12">
+      <main className="flex-1 bg-linear-to-br from-green-50 via-white to-blue-50 dark:bg-none dark:bg-[#141413] py-6 md:py-8 lg:py-12">
         <div className="flex flex-col items-center justify-center min-h-screen md:min-h-dvh px-3 sm:px-4 md:px-6 overflow-hidden relative">
-          {/* Decorative background elements */}
+          {/* Decorative background blobs — subtler in dark mode */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none h-[150vh] w-full">
-            <div className="absolute -top-32 -right-32 sm:-top-40 sm:-right-40 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-green-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
-            <div className="absolute -bottom-32 -left-32 sm:-bottom-40 sm:-left-40 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-cyan-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+            <div className="absolute -top-32 -right-32 sm:-top-40 sm:-right-40 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-green-200 dark:bg-green-900 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-30 dark:opacity-10 animate-blob"></div>
+            <div className="absolute -bottom-32 -left-32 sm:-bottom-40 sm:-left-40 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-blue-200 dark:bg-blue-900 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-30 dark:opacity-10 animate-blob animation-delay-2000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 bg-cyan-200 dark:bg-cyan-900 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-xl opacity-30 dark:opacity-10 animate-blob animation-delay-4000"></div>
           </div>
 
           {/* Content */}
           <div className="relative z-10 w-full max-w-sm sm:max-w-xl md:max-w-2xl lg:max-w-4xl mx-auto text-center space-y-4 sm:space-y-6 md:space-y-8 py-4 sm:py-6 md:py-8">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-100 text-green-700 rounded-full text-xs sm:text-sm font-medium mb-2 sm:mb-3 md:mb-4 animate-fade-in">
+            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs sm:text-sm font-medium mb-2 sm:mb-3 md:mb-4 animate-fade-in">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
@@ -28,7 +28,7 @@ const Homepage = () => {
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 leading-tight animate-fade-in-up">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 dark:text-[#e3e2c3] leading-tight animate-fade-in-up">
               Optimize Your Delivery
               <span className="block bg-linear-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mt-2">
                 RouteFlow
@@ -36,7 +36,7 @@ const Homepage = () => {
             </h1>
 
             {/* Description */}
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 max-w-xl sm:max-w-2xl mx-auto leading-relaxed animate-fade-in-up animation-delay-200">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 dark:text-[#c1c1a9] max-w-xl sm:max-w-2xl mx-auto leading-relaxed animate-fade-in-up animation-delay-200">
               Connect logistics partners and manufacturers. Streamline your
               delivery operations and optimize routes. Start your journey with
               RouteFlow today.
@@ -69,7 +69,7 @@ const Homepage = () => {
 
               <Link
                 href="/auth"
-                className="w-full sm:w-auto px-4 sm:px-8 py-2.5 sm:py-4 bg-white text-gray-700 font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl shadow-md hover:shadow-lg border border-gray-200 hover:border-gray-300 transform hover:-translate-y-0.5 transition-all duration-200"
+                className="w-full sm:w-auto px-4 sm:px-8 py-2.5 sm:py-4 bg-white dark:bg-[#2f2f2e] text-gray-700 dark:text-[#e3e2c3] font-semibold text-sm sm:text-base rounded-lg sm:rounded-xl shadow-md hover:shadow-lg border border-gray-200 dark:border-[#3a3a38] hover:border-gray-300 dark:hover:border-[#4a4a48] transform hover:-translate-y-0.5 transition-all duration-200"
               >
                 Sign In
               </Link>
@@ -77,10 +77,10 @@ const Homepage = () => {
 
             {/* Features Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6 pt-6 sm:pt-8 md:pt-12 w-full animate-fade-in-up animation-delay-600">
-              <div className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-green-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
+              <div className="bg-white/80 dark:bg-[#272727]/90 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)] transition-shadow duration-200 border border-gray-100 dark:border-[#3a3a38]">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-green-100 dark:bg-green-900/30 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
                   <svg
-                    className="w-5 sm:w-6 h-5 sm:h-6 text-green-600"
+                    className="w-5 sm:w-6 h-5 sm:h-6 text-green-600 dark:text-green-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -93,19 +93,19 @@ const Homepage = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-[#e3e2c3] mb-2">
                   Smart Route Planning
                 </h3>
-                <p className="text-gray-600 text-xs sm:text-sm">
+                <p className="text-gray-600 dark:text-[#c1c1a9] text-xs sm:text-sm">
                   Optimize delivery routes and reduce costs with intelligent
                   planning
                 </p>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-blue-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
+              <div className="bg-white/80 dark:bg-[#272727]/90 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)] transition-shadow duration-200 border border-gray-100 dark:border-[#3a3a38]">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-blue-100 dark:bg-blue-900/30 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
                   <svg
-                    className="w-5 sm:w-6 h-5 sm:h-6 text-blue-600"
+                    className="w-5 sm:w-6 h-5 sm:h-6 text-blue-600 dark:text-blue-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -118,18 +118,18 @@ const Homepage = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-                  Prper Order Management
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-[#e3e2c3] mb-2">
+                  Proper Order Management
                 </h3>
-                <p className="text-gray-600 text-xs sm:text-sm">
+                <p className="text-gray-600 dark:text-[#c1c1a9] text-xs sm:text-sm">
                   Keep track of your deliveries and ensure timely fulfillment
                 </p>
               </div>
 
-              <div className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-orange-100 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
+              <div className="bg-white/80 dark:bg-[#272727]/90 backdrop-blur-sm p-4 sm:p-5 md:p-6 rounded-lg sm:rounded-2xl shadow-md hover:shadow-lg dark:shadow-[0_2px_12px_rgba(0,0,0,0.4)] transition-shadow duration-200 border border-gray-100 dark:border-[#3a3a38]">
+                <div className="w-10 sm:w-12 h-10 sm:h-12 bg-orange-100 dark:bg-orange-900/30 rounded-lg sm:rounded-xl flex items-center justify-center mb-3 sm:mb-4 mx-auto">
                   <svg
-                    className="w-5 sm:w-6 h-5 sm:h-6 text-orange-600"
+                    className="w-5 sm:w-6 h-5 sm:h-6 text-orange-600 dark:text-orange-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -142,10 +142,10 @@ const Homepage = () => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-[#e3e2c3] mb-2">
                   Cost Efficient
                 </h3>
-                <p className="text-gray-600 text-xs sm:text-sm">
+                <p className="text-gray-600 dark:text-[#c1c1a9] text-xs sm:text-sm">
                   Reduce fuel costs and improve profit margins with smart
                   logistics
                 </p>

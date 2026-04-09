@@ -7,24 +7,20 @@ import {
   verifyEsewa,
   getMyPayments,
 } from "../controllers/paymentController.js";
+import validate from "../middleware/validate.js";
+import { initiatePaymentSchema } from "../validators/paymentValidators.js";
 
 const router = Router();
 
-// check payment status for an order
 router.get("/status/:orderId", getPaymentStatus);
-
-// start Khalti payment
-router.post("/khalti/initiate", initiateKhalti);
-
-// verify after Khalti redirect
+router.post(
+  "/khalti/initiate",
+  validate(initiatePaymentSchema),
+  initiateKhalti,
+);
 router.get("/khalti/verify", verifyKhalti);
-
-// start eSewa payment
-router.post("/esewa/initiate", initiateEsewa);
-
-// verify after eSewa redirect
+router.post("/esewa/initiate", validate(initiatePaymentSchema), initiateEsewa);
 router.get("/esewa/verify", verifyEsewa);
-
 router.get("/my-payments", getMyPayments);
 
 export default router;

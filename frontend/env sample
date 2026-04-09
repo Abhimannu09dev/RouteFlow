@@ -1,0 +1,14 @@
+
+# API
+# URL of the running backend server (no trailing slash)
+# Development: http://localhost:5000
+# Production:  https://your-render-service.onrender.com
+NEXT_PUBLIC_API_URL=http://localhost:5000
+
+# Mapbox
+# Public token from https://account.mapbox.com
+# Steps:
+#   1. Create a free account at mapbox.com
+#   2. Go to Account → Tokens
+#   3. Copy your Default public token (starts with pk.)
+NEXT_PUBLIC_MAPBOX_TOKEN=pk.your_mapbox_public_token_here
