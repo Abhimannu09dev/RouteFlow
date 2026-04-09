@@ -7,6 +7,11 @@ import {
   acceptOffer,
 } from "../controllers/priceOfferController.js";
 import { rolecheck } from "../middleware/auth.js";
+import validate from "../middleware/validate.js";
+import {
+  submitOfferSchema,
+  updateOfferSchema,
+} from "../validators/priceOfferValidators.js";
 
 const router = Router();
 
@@ -18,8 +23,12 @@ router.put(
 );
 
 router.use(rolecheck(["logistics"]));
-router.post("/:orderId/offers", submitOffer);
-router.put("/:orderId/offers/:offerId", updateOffer);
+router.post("/:orderId/offers", validate(submitOfferSchema), submitOffer);
+router.put(
+  "/:orderId/offers/:offerId",
+  validate(updateOfferSchema),
+  updateOffer,
+);
 router.delete("/:orderId/offers/:offerId", withdrawOffer);
 
 export default router;
