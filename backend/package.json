@@ -30,6 +30,7 @@
   "type": "module",
   "devDependencies": {
     "@faker-js/faker": "^10.4.0",
+    "@vitest/coverage-v8": "^4.1.4",
     "nodemon": "^3.1.14",
     "vitest": "^4.1.4"
   }
