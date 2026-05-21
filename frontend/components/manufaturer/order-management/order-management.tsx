@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { orderAPI, type PaginationMeta } from "@/lib/api";
+import { orderAPI, type PaginationMeta, type OrderStats } from "@/lib/api";
 import Pagination from "@/components/shared/pagination";
 import {
   Plus,
@@ -141,10 +141,13 @@ export default function OrderManagement() {
     limit: ITEMS_PER_PAGE,
     totalPages: 1,
   });
-  const [statusCounts, setStatusCounts] = useState({
+  const [stats, setStats] = useState<OrderStats>({
+    total: 0,
     pending: 0,
-    "in transit": 0,
+    accepted: 0,
+    inTransit: 0,
     delivered: 0,
+    cancelled: 0,
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
@@ -157,20 +160,15 @@ export default function OrderManagement() {
     else setIsRefreshing(true);
 
     try {
-      // Fetch current page + all orders (large limit) for accurate stat counts
-      const [pageData, allData] = await Promise.all([
-        orderAPI.getOrders({ page, limit: ITEMS_PER_PAGE }),
-        orderAPI.getOrders({ page: 1, limit: 1000 }),
-      ]);
-      setOrders(Array.isArray(pageData.orders) ? pageData.orders : []);
-      if (pageData.pagination) setPagination(pageData.pagination);
+      const params: { page: number; limit: number; status?: string } = {
+        page,
+        limit: ITEMS_PER_PAGE,
+      };
+      if (activeFilter !== "all") params.status = activeFilter;
 
-      const all: Order[] = Array.isArray(allData.orders) ? allData.orders : [];
-      setStatusCounts({
-        pending: all.filter((o) => o.status === "pending").length,
-        "in transit": all.filter((o) => o.status === "in transit").length,
-        delivered: all.filter((o) => o.status === "delivered").length,
-      });
+      const data = await orderAPI.getMyOrders(params);
+      setOrders(Array.isArray(data.orders) ? data.orders : []);
+      if (data.pagination) setPagination(data.pagination);
     } catch {
       if (silent) toast.error("Failed to refresh orders");
       setOrders([]);
@@ -180,9 +178,22 @@ export default function OrderManagement() {
     }
   }
 
+  async function fetchStats() {
+    try {
+      const data = await orderAPI.getOrderStats();
+      if (data.stats) setStats(data.stats);
+    } catch {
+      // Stats are non-critical
+    }
+  }
+
   useEffect(() => {
     fetchOrders(currentPage);
   }, [currentPage]);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   // Reset to page 1 when filter or search changes
   useEffect(() => {
@@ -190,19 +201,15 @@ export default function OrderManagement() {
   }, [activeFilter, searchQuery]);
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesFilter =
-        activeFilter === "all" || order.status === activeFilter;
-      const query = searchQuery.toLowerCase();
-      const matchesSearch =
-        !query ||
-        order.orderId.toLowerCase().includes(query) ||
-        order.productDetails.toLowerCase().includes(query) ||
-        order.routeFrom?.toLowerCase().includes(query) ||
-        order.routeTo?.toLowerCase().includes(query);
-      return matchesFilter && matchesSearch;
-    });
-  }, [orders, activeFilter, searchQuery]);
+    if (!searchQuery) return orders;
+    const query = searchQuery.toLowerCase();
+    return orders.filter((order) =>
+      order.orderId.toLowerCase().includes(query) ||
+      order.productDetails.toLowerCase().includes(query) ||
+      order.routeFrom?.toLowerCase().includes(query) ||
+      order.routeTo?.toLowerCase().includes(query)
+    );
+  }, [orders, searchQuery]);
 
   function formatDate(dateStr: string) {
     return new Date(dateStr).toLocaleDateString("en-NP", {
@@ -272,19 +279,19 @@ export default function OrderManagement() {
         />
         <StatCard
           label="Pending"
-          value={statusCounts["pending"]}
+          value={stats.pending}
           icon={Clock}
           color="bg-amber-400"
         />
         <StatCard
           label="In Transit"
-          value={statusCounts["in transit"]}
+          value={stats.inTransit}
           icon={Truck}
           color="bg-purple-500"
         />
         <StatCard
           label="Delivered"
-          value={statusCounts["delivered"]}
+          value={stats.delivered}
           icon={CheckCircle}
           color="bg-green-500"
         />
@@ -325,8 +332,8 @@ export default function OrderManagement() {
           {FILTER_TABS.map((tab) => {
             const count =
               tab.value === "all"
-                ? orders.length
-                : orders.filter((o) => o.status === tab.value).length;
+                ? stats.total
+                : stats[tab.value as keyof OrderStats] || 0;
             return (
               <button
                 key={tab.value}

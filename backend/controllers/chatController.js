@@ -1,4 +1,5 @@
 import path from "path";
+import mongoose from "mongoose";
 import Message from "../models/messageModel.js";
 import Order from "../models/orderModel.js";
 import { getIO } from "../websocket/index.js";
@@ -35,55 +36,143 @@ const resolveOrderForChat = async (orderId, userId) => {
 // List all chat-eligible orders for the logged-in user with last message and unread count
 const getConversations = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
-    const orders = await Order.find({
-      status: { $in: CHAT_ALLOWED_STATUSES },
-      $or: [{ manufacturer: userId }, { logistics: userId }],
-    })
-      .populate("manufacturer", "companyName email")
-      .populate("logistics", "companyName email")
-      .sort({ updatedAt: -1 });
+    const orders = await Order.aggregate([
+      // 1. Match chat-eligible orders
+      {
+        $match: {
+          status: { $in: CHAT_ALLOWED_STATUSES },
+          $or: [
+            { manufacturer: userId },
+            { logistics: userId }
+          ]
+        }
+      },
 
-    const conversations = await Promise.all(
-      orders.map(async (order) => {
-        const lastMessage = await Message.findOne({ orderId: order._id })
-          .sort({ createdAt: -1 })
-          .populate("senderId", "companyName");
+      // 2. $lookup last message
+      {
+        $lookup: {
+          from: "messages",
+          let: { orderId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$orderId", "$$orderId"] } } },
+            { $sort: { createdAt: -1 } },
+            { $limit: 1 },
+          ],
+          as: "lastMessage"
+        }
+      },
 
-        const unreadCount = await Message.countDocuments({
-          orderId: order._id,
+      // 3. $unwind - preserve null for orders with no messages
+      {
+        $unwind: {
+          path: "$lastMessage",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+
+      // 4. $lookup sender details
+      {
+        $lookup: {
+          from: "users",
+          let: { senderId: "$lastMessage.senderId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$senderId"] } } },
+            { $project: { companyName: 1 } }
+          ],
+          as: "messageSender"
+        }
+      },
+
+      // 5. $lookup manufacturer
+      {
+        $lookup: {
+          from: "users",
+          localField: "manufacturer",
+          foreignField: "_id",
+          pipeline: [{ $project: { companyName: 1, email: 1 } }],
+          as: "manufacturer"
+        }
+      },
+
+      // 6. $lookup logistics (may be null)
+      {
+        $lookup: {
+          from: "users",
+          let: { logisticsId: "$logistics" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$logisticsId"] } } },
+            { $project: { companyName: 1, email: 1 } }
+          ],
+          as: "logistics"
+        }
+      },
+
+      // 7. $project - reshape to final output
+      {
+        $project: {
+          _id: 1,
+          orderId: 1,
+          productDetails: 1,
+          status: 1,
+          manufacturer: { $arrayElemAt: ["$manufacturer", 0] },
+          logistics: { $arrayElemAt: ["$logistics", 0] },
+          lastMessage: {
+            $cond: {
+              if: { $ifNull: ["$lastMessage.content", false] },
+              then: {
+                content: "$lastMessage.content",
+                fileType: "$lastMessage.fileType",
+                fileName: "$lastMessage.fileName",
+                sentAt: "$lastMessage.createdAt",
+                senderName: { $arrayElemAt: ["$messageSender.companyName", 0] }
+              },
+              else: "$$REMOVE"
+            }
+          }
+        }
+      },
+
+      // 8. Sort with fallback
+      { $sort: { updatedAt: -1, _id: -1 } }
+    ]);
+
+    // 9. Get unread counts in separate aggregation
+    const unreadCounts = await Message.aggregate([
+      {
+        $match: {
           receiverId: userId,
-          isRead: false,
-        });
+          isRead: false
+        }
+      },
+      {
+        $group: {
+          _id: "$orderId",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
 
-        const isManufacturer =
-          order.manufacturer?._id?.toString() === userId.toString();
-        const otherParty = isManufacturer
-          ? order.logistics
-          : order.manufacturer;
-
-        return {
-          orderId: order._id,
-          orderTitle:
-            order.productDetails ||
-            `Order #${order.orderId || order._id.toString().slice(-6)}`,
-          orderStatus: order.status,
-          isClosed: order.status === "delivered",
-          otherParty,
-          lastMessage: lastMessage
-            ? {
-                content: lastMessage.content,
-                fileType: lastMessage.fileType,
-                fileName: lastMessage.fileName,
-                sentAt: lastMessage.createdAt,
-                senderName: lastMessage.senderId?.companyName,
-              }
-            : null,
-          unreadCount,
-        };
-      }),
+    const unreadMap = new Map(
+      unreadCounts.map(c => [c._id.toString(), c.count])
     );
+
+    // 10. Build final response
+    const conversations = orders.map(order => {
+      const isManufacturer = order.manufacturer?._id?.toString() === userId.toString();
+      const otherParty = isManufacturer ? order.logistics : order.manufacturer;
+
+      return {
+        orderId: order._id,
+        orderTitle: order.productDetails || `Order #${order.orderId || order._id.toString().slice(-6)}`,
+        orderStatus: order.status,
+        isClosed: order.status === "delivered",
+        otherParty,
+        lastMessage: order.lastMessage || null,
+        unreadCount: unreadMap.get(order._id.toString()) || 0
+      };
+    });
 
     return res.json({ success: true, conversations });
   } catch (error) {
@@ -134,9 +223,9 @@ const sendMessage = async (req, res) => {
   try {
     const userId = req.user.id;
     const { orderId } = req.params;
-    const { content, receiverId } = req.body;
+    const { content } = req.body;
 
-    const { isClosed } = await resolveOrderForChat(orderId, userId);
+    const { order, isClosed } = await resolveOrderForChat(orderId, userId);
 
     if (isClosed) {
       return res.status(403).json({
@@ -144,10 +233,17 @@ const sendMessage = async (req, res) => {
         message: "This chat is closed because the order has been delivered",
       });
     }
-    if (!receiverId) {
-      return res
-        .status(400)
-        .json({ success: false, message: "receiverId is required" });
+
+    const derivedReceiverId =
+      userId === order.manufacturer.toString()
+        ? order.logistics?.toString()
+        : order.manufacturer.toString();
+
+    if (!derivedReceiverId) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to determine receiver",
+      });
     }
 
     let fileUrl = null;
@@ -155,7 +251,7 @@ const sendMessage = async (req, res) => {
     let fileName = null;
 
     if (req.file) {
-      fileUrl = `/uploads/${req.file.filename}`;
+      fileUrl = `/uploads/${userId}/${req.file.filename}`;
       fileName = req.file.originalname;
       const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
       const ext = path.extname(req.file.originalname).toLowerCase();
@@ -172,7 +268,7 @@ const sendMessage = async (req, res) => {
     const message = await Message.create({
       orderId,
       senderId: userId,
-      receiverId,
+      receiverId: derivedReceiverId,
       content: content?.trim() || "",
       fileUrl,
       fileType,

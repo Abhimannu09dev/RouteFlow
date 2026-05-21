@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import PriceOffer from "../models/priceOfferModel.js";
 import Order from "../models/orderModel.js";
 import {
@@ -249,8 +250,13 @@ const withdrawOffer = async (req, res) => {
 
 //  Accept an offer (manufacturer only)
 const acceptOffer = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     if (req.user.role !== "manufacturer") {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({
         success: false,
         message: "Only manufacturers can accept price offers",
@@ -263,8 +269,11 @@ const acceptOffer = async (req, res) => {
       orderId,
       status: "pending",
       manufacturer: req.user.id,
-    });
+    }).session(session);
+
     if (!order) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message:
@@ -276,41 +285,43 @@ const acceptOffer = async (req, res) => {
       _id: offerId,
       order: order._id,
       status: "pending",
-    });
+    }).session(session);
+
     if (!offer) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({
         success: false,
         message: "Offer not found or no longer available",
       });
     }
 
-    // Assign logistics and confirm order
     order.logistics = offer.logistics;
     order.status = "accepted";
     order.updatedAt = new Date();
-    await order.save();
+    await order.save({ session });
 
-    // Accept this offer
     offer.status = "accepted";
     offer.updatedAt = new Date();
-    await offer.save();
+    await offer.save({ session });
 
-    // Reject all other pending offers and notify them
     const rejectedOffers = await PriceOffer.find({
       order: order._id,
       _id: { $ne: offerId },
       status: "pending",
-    });
+    }).session(session);
 
     await PriceOffer.updateMany(
       { order: order._id, _id: { $ne: offerId }, status: "pending" },
       { status: "rejected", updatedAt: new Date() },
+      { session },
     );
 
-    // Notify winning logistics
+    await session.commitTransaction();
+    session.endSession();
+
     notifyLogisticsBidAccepted(offer, order);
 
-    // Notify each rejected logistics
     rejectedOffers.forEach((rejected) => {
       notifyLogisticsBidRejected(
         rejected.logistics,
@@ -335,6 +346,8 @@ const acceptOffer = async (req, res) => {
       offer: populatedOffer,
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     return res
       .status(500)
       .json({ success: false, message: "Server error", error: error.message });
@@ -362,6 +375,31 @@ const getMyOffers = async (req, res) => {
   }
 };
 
+const getMyOfferStats = async (req, res) => {
+  try {
+    const [results] = await PriceOffer.aggregate([
+      { $match: { logistics: new mongoose.Types.ObjectId(req.user.id) } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+          accepted: { $sum: { $cond: [{ $eq: ["$status", "accepted"] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ["$status", "rejected"] }, 1, 0] } },
+          withdrawn: { $sum: { $cond: [{ $eq: ["$status", "withdrawn"] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      stats: results || { total: 0, pending: 0, accepted: 0, rejected: 0, withdrawn: 0 },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export {
   submitOffer,
   getOffers,
@@ -369,4 +407,5 @@ export {
   withdrawOffer,
   acceptOffer,
   getMyOffers,
+  getMyOfferStats,
 };

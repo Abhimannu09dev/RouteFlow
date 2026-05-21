@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-//  Mocks
+import Order from "../models/orderModel.js";
 
 vi.mock("../models/paymentModel.js", () => ({
   default: {
@@ -55,6 +55,13 @@ const mockPayment = (overrides = {}) => ({
 //  getPaymentStatus
 
 describe("getPaymentStatus", () => {
+  beforeEach(() => {
+    Order.findById.mockResolvedValue({
+      manufacturer: { toString: () => "mfg001" },
+      logistics: { toString: () => "log001" },
+    });
+  });
+
   it("returns 200 with null when no payment record exists", async () => {
     Payment.findOne.mockReturnValue({ sort: vi.fn().mockResolvedValue(null) });
     const req = {
@@ -100,6 +107,21 @@ describe("getPaymentStatus", () => {
     const res = mockRes();
     await getPaymentStatus(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it("returns 403 if user is not a participant", async () => {
+    Order.findById.mockResolvedValue({
+      manufacturer: { toString: () => "mfg001" },
+      logistics: { toString: () => "log001" },
+    });
+    const req = {
+      params: { orderId: "order_obj_1" },
+      user: { id: "unauthorized_user" },
+      query: {},
+    };
+    const res = mockRes();
+    await getPaymentStatus(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 });
 

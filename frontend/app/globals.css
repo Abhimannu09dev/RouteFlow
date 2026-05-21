@@ -226,3 +226,8 @@ html.dark .shadow-2xl {
 html.dark * {
     scrollbar-color: #3a3a38 #141413;
 }
+
+/* Ant Design Drawer close button in dark mode */
+html.dark [data-icon="close"] {
+    color: #ffffff !important;
+}

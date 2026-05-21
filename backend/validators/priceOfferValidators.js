@@ -4,13 +4,13 @@ export const submitOfferSchema = z.object({
   proposedPrice: z.coerce
     .number({ required_error: "Proposed price is required", invalid_type_error: "Proposed price must be a number" })
     .positive("Proposed price must be greater than 0")
-    .max(100_000_000, "Proposed price is too large"),
+    .max(100_000_000, "Proposed price must not exceed NPR 100,000,000"),
 
   estimatedDeliveryDays: z.coerce
     .number({ required_error: "Estimated delivery days is required", invalid_type_error: "Estimated delivery days must be a number" })
     .int("Estimated delivery days must be a whole number")
     .positive("Estimated delivery days must be greater than 0")
-    .max(365, "Estimated delivery days cannot exceed 365"),
+    .max(30, "Estimated delivery days cannot exceed 30"),
 
   note: z
     .string()
@@ -23,7 +23,7 @@ export const updateOfferSchema = z
     proposedPrice: z.coerce
       .number({ invalid_type_error: "Proposed price must be a number" })
       .positive("Proposed price must be greater than 0")
-      .max(100_000_000, "Proposed price is too large")
+      .max(100_000_000, "Proposed price must not exceed NPR 100,000,000")
       .optional(),
 
     estimatedDeliveryDays: z.coerce

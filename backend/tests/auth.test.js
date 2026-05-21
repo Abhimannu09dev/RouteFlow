@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../models/userModel.js", () => {
   const User = vi.fn();
   User.findOne = vi.fn();
+  User.findById = vi.fn();
   return { default: User };
 });
 
@@ -23,6 +24,7 @@ vi.mock("bcrypt", () => ({
 vi.mock("jsonwebtoken", () => ({
   default: {
     sign: vi.fn(() => "mock.jwt.token"),
+    verify: vi.fn(),
   },
 }));
 
@@ -58,6 +60,7 @@ const mockUser = (overrides = {}) => ({
   password: "hashed_password",
   role: "manufacturer",
   isVerified: true,
+  isActive: true,
   isAccountVerified: false,
   otpHash: null,
   otpExpires: null,
@@ -263,6 +266,18 @@ describe("loginUser", () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: "Mismatched password" }),
+    );
+  });
+
+  it("returns 403 when account is inactive", async () => {
+    User.findOne.mockResolvedValue(mockUser({ isVerified: true, isActive: false }));
+    bcrypt.compare.mockResolvedValue(true);
+    const req = { body: { email: "a@b.com", password: "Pass123!" } };
+    const res = mockRes();
+    await loginUser(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "Account is deactivated" }),
     );
   });
 
@@ -553,5 +568,46 @@ describe("resetPassword", () => {
         message: "Password reset successfully",
       }),
     );
+  });
+});
+
+// Auth middleware tests
+describe("auth middleware", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.JWT_SECRET = "test_secret";
+  });
+
+  it("should reject request if user is inactive", async () => {
+    const { auth } = await import("../middleware/auth.js");
+    const req = { cookies: { token: "valid_token" } };
+    const res = mockRes();
+    const next = vi.fn();
+
+    jwt.verify.mockReturnValue({ id: "user1", role: "manufacturer" });
+    User.findById.mockReturnValue({
+      select: vi.fn().mockResolvedValue({ isActive: false }),
+    });
+
+    await auth(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("should call next() if user is active", async () => {
+    const { auth } = await import("../middleware/auth.js");
+    const req = { cookies: { token: "valid_token" } };
+    const res = mockRes();
+    const next = vi.fn();
+
+    jwt.verify.mockReturnValue({ id: "user1", role: "manufacturer" });
+    User.findById.mockReturnValue({
+      select: vi.fn().mockResolvedValue({ isActive: true }),
+    });
+
+    await auth(req, res, next);
+
+    expect(next).toHaveBeenCalled();
   });
 });

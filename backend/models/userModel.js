@@ -39,10 +39,18 @@ const userSchema = new Schema({
   isAccountVerified: { type: Boolean, default: false },
   submittedForVerification: { type: Boolean, default: false },
   rejectionReason: { type: String },
+  isActive: { type: Boolean, default: true },
   otpHash: { type: String },
   otpExpires: { type: Date },
   resetTokenHash: { type: String },
   resetTokenExpires: { type: Date },
+  notificationPreferences: {
+    emailNotifications: { type: Boolean, default: true },
+    orderStatusUpdates: { type: Boolean, default: true },
+    bidUpdates: { type: Boolean, default: true },
+    newOrderAlerts: { type: Boolean, default: true },
+    chatMessages: { type: Boolean, default: true },
+  },
 });
 
 export default mongoose.model("User", userSchema);

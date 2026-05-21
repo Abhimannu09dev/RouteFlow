@@ -103,6 +103,15 @@ export type OrdersResponse = {
   pagination: PaginationMeta;
 };
 
+export type OrderStats = {
+  total: number;
+  pending: number;
+  accepted: number;
+  inTransit: number;
+  delivered: number;
+  cancelled: number;
+};
+
 export const orderAPI = {
   createOrder: (payload: CreateOrderPayload) =>
     apiFetch("/create/order", {
@@ -129,6 +138,9 @@ export const orderAPI = {
 
   getOrderDetails: (orderId: string) => apiFetch(`/orders/${orderId}`),
 
+  getOrderStats: (): Promise<{ success: boolean; stats: OrderStats }> =>
+    apiFetch("/orders/stats"),
+
   acceptOrder: (orderId: string) =>
     apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
 
@@ -151,6 +163,14 @@ export type OffersResponse = {
   pagination: PaginationMeta;
 };
 
+export type OfferStats = {
+  total: number;
+  pending: number;
+  accepted: number;
+  rejected: number;
+  withdrawn: number;
+};
+
 export const priceOfferAPI = {
   submitOffer: (orderId: string, payload: SubmitOfferPayload) =>
     apiFetch(`/orders/${orderId}/offers`, {
@@ -162,6 +182,9 @@ export const priceOfferAPI = {
 
   getMyOffers: (params?: PaginationParams): Promise<OffersResponse> =>
     apiFetch(`/orders/my-offers${buildPaginationQuery(params)}`),
+
+  getMyOfferStats: (): Promise<{ success: boolean; stats: OfferStats }> =>
+    apiFetch("/orders/my-offers/stats"),
 
   updateOffer: (
     orderId: string,

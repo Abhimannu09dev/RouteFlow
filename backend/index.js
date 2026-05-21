@@ -3,6 +3,7 @@ import express from "express";
 import http from "http";
 import mongoose from "mongoose";
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import path from "path";
 
@@ -33,15 +34,32 @@ import routes from "./routes/index.js";
 // App config
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Middleware
 app.use(cookieParser());
+app.use(helmet());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 
-// Serve uploads folder (FIXED)
-app.use("/uploads", express.static(uploadDir));
+// Protected file serving
+app.get("/uploads/:userId/:filename", auth, async (req, res) => {
+  const { userId, filename } = req.params;
+  const requestingUserId = req.user.id;
+  const isAdmin = req.user.role === "admin";
+
+  if (requestingUserId !== userId && !isAdmin) {
+    return res.status(403).json({ success: false, message: "Not authorized" });
+  }
+
+  const filePath = path.join(uploadDir, filename);
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      return res.status(404).json({ success: false, message: "File not found" });
+    }
+  });
+});
 
 // Test route
 app.get("/", (req, res) => {
@@ -89,6 +107,11 @@ app.use("/", routes);
 // DB + Server start
 if (!MONGO_URI) {
   console.error("MONGO_URI is missing in .env");
+  process.exit(1);
+}
+
+if (!JWT_SECRET) {
+  console.error("JWT_SECRET is missing in .env");
   process.exit(1);
 }
 

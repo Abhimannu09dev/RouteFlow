@@ -7,6 +7,11 @@ let io = null;
 
 const userSocketMap = {};
 
+// NOTE: This is an in-memory Map. For horizontal scaling (multiple Node processes,
+// PM2 cluster, Kubernetes pods), replace with @socket.io/redis-adapter and a Redis
+// instance. Without Redis, users connected to different processes won't receive
+// real-time notifications from each other.
+
 function initWebSocket(server) {
   io = new Server(server, {
     cors: {
@@ -77,14 +82,13 @@ function initWebSocket(server) {
       socket.leave(`chat_${orderId}`);
     });
 
-    socket.on("send_message", async ({ orderId, receiverId, content }) => {
+    socket.on("send_message", async ({ orderId, content }) => {
       try {
-        if (!orderId || !receiverId || !content?.trim()) return;
+        if (!orderId || !content?.trim()) return;
 
         const order = await Order.findById(orderId);
         if (!order) return;
 
-        // Reject if order is delivered (chat closed)
         if (order.status === "delivered") {
           socket.emit("chat_error", {
             message: "Chat is closed for delivered orders",
@@ -107,11 +111,18 @@ function initWebSocket(server) {
           return;
         }
 
-        // Persist message to MongoDB
+        const derivedReceiverId =
+          uid === manufacturerId ? logisticsId : manufacturerId;
+
+        if (!derivedReceiverId) {
+          socket.emit("chat_error", { message: "Unable to determine receiver" });
+          return;
+        }
+
         const message = await Message.create({
           orderId,
           senderId: userId,
-          receiverId,
+          receiverId: derivedReceiverId,
           content: content.trim(),
         });
 

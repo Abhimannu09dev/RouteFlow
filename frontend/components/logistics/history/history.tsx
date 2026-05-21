@@ -229,7 +229,12 @@ export default function LogisticsHistory() {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const data = await orderAPI.getMyOrders({ page, limit: ITEMS_PER_PAGE });
+      const params: { page: number; limit: number; status?: string } = {
+        page, limit: ITEMS_PER_PAGE,
+      };
+      if (activeFilter !== "all") params.status = activeFilter;
+
+      const data = await orderAPI.getMyOrders(params);
       setOrders(Array.isArray(data.orders) ? data.orders : []);
       if (data.pagination) setPagination(data.pagination);
     } catch {
@@ -265,19 +270,16 @@ export default function LogisticsHistory() {
   }
 
   const filteredOrders = useMemo(() => {
-    return orders.filter((o) => {
-      const matchesFilter = activeFilter === "all" || o.status === activeFilter;
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        !q ||
-        o.orderId.toLowerCase().includes(q) ||
-        o.productDetails.toLowerCase().includes(q) ||
-        o.routeFrom.toLowerCase().includes(q) ||
-        o.routeTo.toLowerCase().includes(q) ||
-        o.manufacturer.companyName.toLowerCase().includes(q);
-      return matchesFilter && matchesSearch;
-    });
-  }, [orders, activeFilter, searchQuery]);
+    if (!searchQuery.trim()) return orders;
+    const q = searchQuery.toLowerCase();
+    return orders.filter((o) =>
+      o.orderId.toLowerCase().includes(q) ||
+      o.productDetails.toLowerCase().includes(q) ||
+      o.routeFrom.toLowerCase().includes(q) ||
+      o.routeTo.toLowerCase().includes(q) ||
+      o.manufacturer.companyName.toLowerCase().includes(q)
+    );
+  }, [orders, searchQuery]);
 
   if (isLoading) {
     return (

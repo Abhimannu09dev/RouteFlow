@@ -4,6 +4,7 @@ import crypto from "crypto";
 import Payment from "../models/paymentModel.js";
 import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
+import User from "../models/userModel.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const KHALTI_INITIATE_URL = "https://dev.khalti.com/api/v2/epayment/initiate/";
@@ -52,9 +53,23 @@ const resolvePayableOrder = async (orderId, userId) => {
 // Get the latest payment status for an order
 const getPaymentStatus = async (req, res) => {
   try {
-    const payment = await Payment.findOne({ orderId: req.params.orderId }).sort(
-      { createdAt: -1 },
-    );
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    const userId = req.user.id;
+    const isManufacturer = order.manufacturer.toString() === userId;
+    const isLogistics = order.logistics?.toString() === userId;
+    const isAdmin = req.user.role === "admin";
+
+    if (!isManufacturer && !isLogistics && !isAdmin) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    const payment = await Payment.findOne({ orderId }).sort({ createdAt: -1 });
     return res.status(200).json({ success: true, payment });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
@@ -63,10 +78,24 @@ const getPaymentStatus = async (req, res) => {
 
 // Initiate a Khalti payment for a delivered order
 const initiateKhalti = async (req, res) => {
-  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY; // read lazily — ES Module dotenv timing fix
+  const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
 
   try {
     const { orderId } = req.body;
+
+    const existingPending = await Payment.findOne({ orderId, status: "pending" });
+    if (existingPending) {
+      const response = {
+        success: true,
+        message: "Payment already in progress",
+        paymentId: existingPending._id,
+      };
+      if (existingPending.gateway === "khalti") {
+        response.pidx = existingPending.pidx;
+      }
+      return res.status(200).json(response);
+    }
+
     const order = await resolvePayableOrder(orderId, req.user.id);
 
     const acceptedBid = await PriceOffer.findOne({
@@ -79,6 +108,8 @@ const initiateKhalti = async (req, res) => {
         message: "No accepted bid found for this order",
       });
     }
+
+    const user = await User.findById(req.user.id).select("companyName email");
 
     const payment = await Payment.create({
       orderId,
@@ -98,12 +129,12 @@ const initiateKhalti = async (req, res) => {
       body: JSON.stringify({
         return_url: `${FRONTEND_URL}/payment/khalti/verify`,
         website_url: FRONTEND_URL,
-        amount: Math.round(acceptedBid.proposedPrice * 100), // Khalti uses paisa
+        amount: Math.round(acceptedBid.proposedPrice * 100),
         purchase_order_id: payment._id.toString(),
         purchase_order_name: `RouteFlow Order #${order.orderId}`,
         customer_info: {
-          name: req.user.companyName || "Manufacturer",
-          email: req.user.email,
+          name: user.companyName || "Manufacturer",
+          email: user.email,
         },
       }),
     });
@@ -185,14 +216,24 @@ const verifyKhalti = async (req, res) => {
 
 // Initiate an eSewa payment for a delivered order
 const initiateEsewa = async (req, res) => {
-  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, ""); // read lazily
+  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
   const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
     /^"|"$/g,
     "",
-  ); // read lazily
+  );
 
   try {
     const { orderId } = req.body;
+
+    const existingPending = await Payment.findOne({ orderId, status: "pending" });
+    if (existingPending) {
+      return res.status(200).json({
+        success: true,
+        message: "Payment already in progress",
+        paymentId: existingPending._id,
+      });
+    }
+
     const order = await resolvePayableOrder(orderId, req.user.id);
 
     const acceptedBid = await PriceOffer.findOne({

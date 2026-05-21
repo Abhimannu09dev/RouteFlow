@@ -6,25 +6,25 @@ import Link from "next/link";
 import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
 import { LogOut, Menu } from "lucide-react";
 import Image from "next/image";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const MobileSidebar = ({ pathname }: { pathname: string }) => {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [open, setOpen] = useState(false);
 
   const showDrawer = () => setOpen(true);
   const onClose = () => setOpen(false);
 
-  // Close the drawer when pathname changes (asynchronously to avoid React warning)
+  // Close the drawer when navigating to a new route
   useEffect(() => {
-    if (open) {
-      const timer = setTimeout(() => setOpen(false), 0); // async state update
-      return () => clearTimeout(timer); // cleanup
-    }
-  }, [pathname, open]);
+    setOpen(false);
+  }, [pathname]);
 
   return (
     <aside className="lg:hidden group">
       <div className="w-full p-2 bg-white border-b border-gray-100 flex items-center gap-3">
-        <Menu size={24} onClick={showDrawer} className="cursor-pointer" />
+        <Menu size={24} onClick={showDrawer} className="cursor-pointer text-[#5B6871]" />
 
         {/* Logo Section */}
         <Image
@@ -40,8 +40,13 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
         open={open}
         onClose={onClose}
         placement="left"
-        size={280}
-        getContainer={false}
+        size="default"
+        styles={{
+          wrapper: { width: 280 },
+          mask: { background: isDark ? "rgba(0,0,0,0.7)" : undefined },
+          section: { background: isDark ? "var(--rf-bg-card)" : undefined },
+          header: { background: isDark ? "var(--rf-bg-card)" : undefined },
+        }}
         classNames={{
           header: "",
           body: "flex flex-col gap-8",

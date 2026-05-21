@@ -3,10 +3,11 @@ import {
   createOrder,
   getAvailableOrders,
   getOrderDetails,
+  getOrderStats,
   updateOrderStatus,
   getMyOrders,
 } from "../controllers/orderController.js";
-import { getMyOffers } from "../controllers/priceOfferController.js";
+import { getMyOffers, getMyOfferStats } from "../controllers/priceOfferController.js";
 import { rolecheck } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 import {
@@ -20,6 +21,8 @@ router.post("/create/order", validate(createOrderSchema), createOrder);
 router.get("/orders", getAvailableOrders);
 router.get("/my-orders", getMyOrders);
 router.get("/orders/my-offers", rolecheck(["logistics"]), getMyOffers);
+router.get("/orders/my-offers/stats", rolecheck(["logistics"]), getMyOfferStats);
+router.get("/orders/stats", getOrderStats);
 router.get("/orders/:orderId", getOrderDetails);
 router.put(
   "/orders/:orderId/status",

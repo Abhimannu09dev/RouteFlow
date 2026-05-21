@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import mongoose from "mongoose";
 import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
 import {
@@ -207,6 +208,19 @@ const getOrderDetails = async (req, res) => {
         .json({ success: false, message: "Order not found" });
     }
 
+    const userId = req.user.id;
+    const isManufacturer = order.manufacturer._id.toString() === userId;
+    const isAssignedLogistics = order.logistics?._id?.toString() === userId;
+    const isAdmin = req.user.role === "admin";
+    const isLogisticsViewingAvailable =
+      req.user.role === "logistics" &&
+      order.status === "pending" &&
+      !order.logistics;
+
+    if (!isManufacturer && !isAssignedLogistics && !isAdmin && !isLogisticsViewingAvailable) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
     return res.status(200).json({ success: true, order });
   } catch (error) {
     return res
@@ -255,10 +269,42 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+// Get order status counts for manufacturer dashboard tabs
+const getOrderStats = async (req, res) => {
+  try {
+    if (req.user.role !== "manufacturer") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const [results] = await Order.aggregate([
+      { $match: { manufacturer: new mongoose.Types.ObjectId(req.user.id) } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+          accepted: { $sum: { $cond: [{ $eq: ["$status", "accepted"] }, 1, 0] } },
+          inTransit: { $sum: { $cond: [{ $eq: ["$status", "in transit"] }, 1, 0] } },
+          delivered: { $sum: { $cond: [{ $eq: ["$status", "delivered"] }, 1, 0] } },
+          cancelled: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      stats: results || { total: 0, pending: 0, accepted: 0, inTransit: 0, delivered: 0, cancelled: 0 },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export {
   createOrder,
   getAvailableOrders,
   getMyOrders,
   getOrderDetails,
+  getOrderStats,
   updateOrderStatus,
 };

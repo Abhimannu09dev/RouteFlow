@@ -306,7 +306,6 @@ describe("getOrderDetails", () => {
     const chain = {
       populate: vi.fn().mockReturnThis(),
     };
-    // Second populate resolves with the order
     chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
     Order.findOne = vi.fn().mockReturnValue(chain);
 
@@ -319,6 +318,59 @@ describe("getOrderDetails", () => {
     const res = mockRes();
     await getOrderDetails(req, res);
     expect(Order.findOne).toHaveBeenCalledWith({ orderId: "ORD-ABC123" });
+  });
+
+  it("returns 403 if user is not a participant", async () => {
+    const order = {
+      _id: "order123",
+      orderId: "ORD-ABC123",
+      manufacturer: { _id: { toString: () => "mfg001" }, companyName: "Test MFG" },
+      logistics: { _id: { toString: () => "log001" }, companyName: "Test LOG" },
+      status: "accepted",
+    };
+    const chain = {
+      populate: vi.fn().mockReturnThis(),
+    };
+    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
+    Order.findOne = vi.fn().mockReturnValue(chain);
+
+    const req = {
+      user: { id: "unauthorized_user", role: "manufacturer" },
+      params: { orderId: "ORD-ABC123" },
+      body: {},
+      query: {},
+    };
+    const res = mockRes();
+    await getOrderDetails(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Not authorized" }),
+    );
+  });
+
+  it("allows admin to view any order", async () => {
+    const order = {
+      _id: "order123",
+      orderId: "ORD-ABC123",
+      manufacturer: { _id: { toString: () => "mfg001" }, companyName: "Test MFG" },
+      logistics: { _id: { toString: () => "log001" }, companyName: "Test LOG" },
+      status: "accepted",
+    };
+    const chain = {
+      populate: vi.fn().mockReturnThis(),
+    };
+    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
+    Order.findOne = vi.fn().mockReturnValue(chain);
+
+    const req = {
+      user: { id: "admin001", role: "admin" },
+      params: { orderId: "ORD-ABC123" },
+      body: {},
+      query: {},
+    };
+    const res = mockRes();
+    await getOrderDetails(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 });
 

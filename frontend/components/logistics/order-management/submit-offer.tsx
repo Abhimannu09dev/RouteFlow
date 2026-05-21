@@ -67,6 +67,10 @@ export default function SubmitOfferModal({
       toast.error("Enter estimated delivery days");
       return;
     }
+    if (numPrice > 100_000_000) {
+      toast.error("Proposed price must not exceed NPR 100,000,000");
+      return;
+    }
     setIsLoading(true);
     try {
       const payload = {
@@ -170,11 +174,16 @@ export default function SubmitOfferModal({
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B0B7C3]"
               />
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || (/^\d+$/.test(val) && Number(val) <= 100000000)) {
+                    setPrice(val);
+                  }
+                }}
                 placeholder="Enter your price"
-                min={1}
                 className="w-full pl-9 pr-3 py-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>
@@ -204,11 +213,16 @@ export default function SubmitOfferModal({
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B0B7C3]"
               />
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={days}
-                onChange={(e) => setDays(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || (/^\d+$/.test(val) && Number(val) >= 1 && Number(val) <= 30)) {
+                    setDays(val);
+                  }
+                }}
                 placeholder="e.g. 3"
-                min={1}
                 className="w-full pl-9 pr-3 py-3 rounded-xl bg-[#F5F5F5] text-sm text-[#252C32] placeholder:text-[#B0B7C3] outline-none focus:ring-2 focus:ring-primary/30 transition"
               />
             </div>

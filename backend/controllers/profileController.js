@@ -80,7 +80,7 @@ const updateProfile = async (req, res) => {
         deleteFile(path.basename(existingUser.companyLogo));
       }
 
-      allowedUpdates.companyLogo = `${BASE_URL}/uploads/${logoFile.filename}`;
+      allowedUpdates.companyLogo = `${BASE_URL}/uploads/${req.user.id}/${logoFile.filename}`;
     }
 
     if (Object.keys(allowedUpdates).length === 0) {
@@ -158,7 +158,7 @@ const uploadDocuments = async (req, res) => {
       type: documentTypes[index],
       label: documentLabels[index] || "",
       filename: file.filename,
-      url: `${BASE_URL}/uploads/${file.filename}`,
+      url: `${BASE_URL}/uploads/${req.user.id}/${file.filename}`,
       uploadedAt: new Date(),
     }));
 

@@ -116,6 +116,10 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ error: "Mismatched password" });
     }
 
+    if (!user.isActive) {
+      return res.status(403).json({ error: "Account is deactivated" });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,

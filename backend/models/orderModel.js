@@ -26,4 +26,10 @@ const orderSchema = new Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 
+orderSchema.index({ status: 1 });
+orderSchema.index({ manufacturer: 1 });
+orderSchema.index({ logistics: 1 });
+orderSchema.index({ createdAt: -1 });
+orderSchema.index({ status: 1, logistics: 1 });
+
 export default mongoose.model("Order", orderSchema);
