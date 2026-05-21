@@ -61,7 +61,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
                 href={item.href}
                 className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all! text-sm ${
                   pathname.includes(item.href)
-                    ? "bg-white! text-primary! font-medium! hover:text-primary-dark"
+                    ? "bg-white! text-primary! font-medium! hover:text-primary-dark!"
                     : "text-[#838383]! hover:bg-white! hover:text-primary!"
                 }`}
               >
@@ -79,8 +79,8 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
                 href={item.href}
                 className={`flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all! text-sm ${
                   pathname.includes(item.href)
-                    ? "bg-white text-primary! font-medium! hover:text-primary-dark"
-                    : "text-[#838383] hover:bg-white hover:text-primary"
+                    ? "bg-white! text-primary! font-medium! hover:text-primary-dark!"
+                    : "text-[#838383]! hover:bg-white! hover:text-primary!"
                 }`}
               >
                 {item.icon && <item.icon className="w-5 h-5" />}
@@ -90,7 +90,7 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
 
             <Link
               href={"/auth"}
-              className="flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all! text-sm text-[#838383] hover:bg-red-100 hover:text-red-500"
+              className="flex items-center gap-2 py-2.5 px-4 rounded-lg duration-200 transition-all! text-sm text-[#838383]! hover:bg-red-100! hover:text-red-500!"
             >
               <LogOut className="w-5 h-5" />
               Logout

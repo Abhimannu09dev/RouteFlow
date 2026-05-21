@@ -44,7 +44,7 @@ export default function LogisticsLayout({
           Previously min-h-[100dvh] meant h-full in children resolved to 0.
         */}
         <div className="flex-1 min-h-0 overflow-y-auto bg-white">
-          <div className="min-h-full p-2 md:p-4 lg:p-5">{children}</div>
+          <div className="h-full p-2 md:p-4 lg:p-5">{children}</div>
         </div>
       </div>
     </div>
