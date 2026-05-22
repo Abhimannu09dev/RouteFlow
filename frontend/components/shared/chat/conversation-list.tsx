@@ -67,14 +67,14 @@ export default function ConversationList({
             <button
               type="button"
               onClick={() => onSelect(c.orderId)}
-              className={`w-full text-left px-4 py-3 transition hover:bg-[#F8FAFB] ${
-                selected ? "bg-blue-50/80 hover:bg-blue-50/80" : ""
+              className={`w-full text-left px-4 py-3 transition hover:bg-[#F8FAFB] dark:hover:bg-[#2f2f2f] ${
+                selected ? "bg-blue-50/80 dark:bg-[#2a3a4a] hover:bg-blue-50/80 dark:hover:bg-[#2a3a4a]" : ""
               }`}
             >
               <div className="flex items-start justify-between gap-2 mb-1">
                 <p
                   className={`text-sm font-semibold truncate ${
-                    selected ? "text-blue-700" : "text-[#252C32]"
+                    selected ? "text-blue-700 dark:text-blue-400" : "text-[#252C32] dark:text-white"
                   }`}
                 >
                   {c.otherParty?.companyName || "Unknown"}
@@ -92,10 +92,10 @@ export default function ConversationList({
                   ) : null}
                 </div>
               </div>
-              <p className="text-[11px] text-[#9AA6AC] truncate mb-0.5">
+              <p className="text-[11px] text-[#9AA6AC] dark:text-[#6b7280] truncate mb-0.5">
                 {c.orderTitle}
               </p>
-              <p className="text-xs text-[#5B6871] line-clamp-2 leading-snug">
+              <p className="text-xs text-[#5B6871] dark:text-[#9ca3af] line-clamp-2 leading-snug">
                 {previewText(c)}
               </p>
             </button>
