@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { orderAPI, type CreateOrderPayload } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Package,
   MapPin,
@@ -11,6 +12,7 @@ import {
   FileText,
   Loader2,
   DollarSign,
+  ShieldAlert,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -144,6 +146,7 @@ function Toggle({
 
 export default function OrderPlacementForm() {
   const router = useRouter();
+  const { user } = useAuth("manufacturer");
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<
@@ -234,8 +237,25 @@ export default function OrderPlacementForm() {
     }
   }
 
+  const notVerified = user && !user.isAccountVerified;
+
   return (
     <div className="w-full max-w-3xl mx-auto">
+      {notVerified && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+          <ShieldAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              Verification Required
+            </p>
+            <p className="text-xs text-amber-700 mt-1">
+              Your account is pending admin verification. You&apos;ll be able to
+              place orders once an admin verifies your profile.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-[#252C32]">
           Place New Order
@@ -245,6 +265,17 @@ export default function OrderPlacementForm() {
         </p>
       </div>
 
+      <div className={`relative ${notVerified ? "pointer-events-none opacity-50" : ""}`}>
+        {notVerified && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="bg-white/80 p-6 rounded-2xl text-center">
+              <ShieldAlert size={32} className="text-amber-500 mx-auto mb-2" />
+              <p className="text-sm font-medium text-[#252C32]">
+                Complete admin verification first
+              </p>
+            </div>
+          </div>
+        )}
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         {/* ── Product Information ── */}
         <div className="bg-white rounded-2xl border border-[#E5E9EB] p-5">
@@ -481,6 +512,7 @@ export default function OrderPlacementForm() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

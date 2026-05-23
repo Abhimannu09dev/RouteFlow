@@ -3,7 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import { orderAPI, priceOfferAPI, type PaginationMeta } from "@/lib/api";
-import { Package, RefreshCw, Search } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Package, RefreshCw, Search, ShieldAlert } from "lucide-react";
 import Pagination from "@/components/shared/pagination";
 import OrderCard, { type Order, type MyOffer } from "./order-card";
 import SubmitOfferModal from "./submit-offer";
@@ -13,6 +14,7 @@ type OfferMap = Record<string, MyOffer>;
 const ITEMS_PER_PAGE = 9; // 3-column grid looks best with 9
 
 export default function OrdersPlacement() {
+  const { user } = useAuth("logistics");
   const [orders, setOrders] = useState<Order[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({
     total: 0,
@@ -85,6 +87,8 @@ export default function OrdersPlacement() {
       setOfferMap((prev) => ({ ...prev, [activeModal.orderId]: offer }));
     }
   }
+
+  const notVerified = user && !user.isAccountVerified;
 
   const filteredOrders = useMemo(() => {
     if (!searchQuery.trim()) return orders;
@@ -179,6 +183,22 @@ export default function OrdersPlacement() {
           </span>
         </div>
 
+        {/* Verification banner */}
+        {notVerified && (
+          <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+            <ShieldAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-800">
+                Verification Required
+              </p>
+              <p className="text-xs text-amber-700 mt-1">
+                Your account is pending admin verification. You&apos;ll be able
+                to place bids once an admin verifies your profile.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Empty state */}
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-[#E5E9EB]">
@@ -204,6 +224,7 @@ export default function OrdersPlacement() {
                   key={order._id}
                   order={order}
                   myOffer={offerMap[order.orderId] || null}
+                  isVerified={!notVerified}
                   onBid={() =>
                     setActiveModal({
                       orderId: order.orderId,

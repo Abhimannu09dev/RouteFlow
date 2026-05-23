@@ -8,7 +8,7 @@ import {
   getMyOrders,
 } from "../controllers/orderController.js";
 import { getMyOffers, getMyOfferStats } from "../controllers/priceOfferController.js";
-import { rolecheck } from "../middleware/auth.js";
+import { rolecheck, requireVerification } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 import {
   createOrderSchema,
@@ -17,7 +17,7 @@ import {
 
 const router = Router();
 
-router.post("/create/order", validate(createOrderSchema), createOrder);
+router.post("/create/order", requireVerification, validate(createOrderSchema), createOrder);
 router.get("/orders", getAvailableOrders);
 router.get("/my-orders", getMyOrders);
 router.get("/orders/my-offers", rolecheck(["logistics"]), getMyOffers);

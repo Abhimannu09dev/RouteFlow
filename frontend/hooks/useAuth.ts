@@ -9,6 +9,8 @@ type AuthUser = {
   companyName: string;
   email: string;
   role: "manufacturer" | "logistics";
+  isAccountVerified: boolean;
+  submittedForVerification: boolean;
 };
 
 type AuthState = {

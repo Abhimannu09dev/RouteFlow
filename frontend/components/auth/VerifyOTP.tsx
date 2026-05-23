@@ -85,8 +85,8 @@ const VerifyAuth = () => {
 
   return (
     <div className="w-full flex flex-col items-center gap-3">
-      <p className="text-lg font-medium">Check your inbox</p>
-      <p className="text-blackish text-sm text-center">
+      <p className="text-lg font-medium dark:text-white">Check your inbox</p>
+      <p className="text-blackish text-sm text-center dark:text-gray-300">
         We&apos;ve sent a verification code to {email}.
       </p>
 
@@ -94,7 +94,7 @@ const VerifyAuth = () => {
         onSubmit={handleSubmit}
         className="w-full flex flex-col items-center gap-4 text-sm"
       >
-        <p>Enter the code above to continue.</p>
+        <p className="dark:text-gray-300">Enter the code above to continue.</p>
         <div id="inputs" className="flex gap-3 justify-center my-4">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <input
@@ -102,7 +102,7 @@ const VerifyAuth = () => {
               ref={(el) => {
                 inputsRef.current[i] = el;
               }}
-              className="w-12 h-12 text-center bg-gray-100 border-none rounded-md text-lg font-semibold focus:outline-none focus:border-black"
+              className="w-12 h-12 text-center bg-gray-100 dark:bg-[#3a3a3a] border-none rounded-md text-lg font-semibold dark:text-white focus:outline-none focus:border-black dark:focus:border-white"
               type="text"
               inputMode="numeric"
               maxLength={1}
@@ -121,19 +121,19 @@ const VerifyAuth = () => {
       </form>
 
       <div className="w-full flex items-center justify-center gap-2">
-        <div className="w-full h-px bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300 dark:bg-[#444]"></div>
         <p className="text-[#C6C6C6E5] text-xs text-nowrap my-2">
           Did&apos;t get the code?
         </p>
-        <div className="w-full h-px bg-gray-300"></div>
+        <div className="w-full h-px bg-gray-300 dark:bg-[#444]"></div>
       </div>
       <button
         onClick={handleResend}
         disabled={seconds > 0}
         className={`w-full p-3 rounded-md border-none text-sm font-medium text-center transition-all ${
           seconds > 0
-            ? "bg-[#f2f2f2] border-gray-300 text-gray-500 cursor-not-allowed"
-            : "bg-[#e0e0e0] hover:bg-[#d6d6d6] border-gray-400 text-blackish cursor-pointer"
+            ? "bg-[#f2f2f2] border-gray-300 text-gray-500 cursor-not-allowed dark:bg-[#2f2f2f] dark:text-gray-400"
+            : "bg-[#e0e0e0] hover:bg-[#d6d6d6] border-gray-400 text-blackish cursor-pointer dark:bg-[#3a3a3a] dark:text-white dark:hover:bg-[#444]"
         }`}
       >
         {seconds > 0 ? `Resend in ${seconds} sec` : "Resend"}

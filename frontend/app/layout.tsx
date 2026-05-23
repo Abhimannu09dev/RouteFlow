@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${manrope.className} bg-[#F1F1F1]`}>
+      <body className={`${manrope.className} bg-[#F1F1F1]`} suppressHydrationWarning>
         <NextTopLoader
           color="#29935c"
           initialPosition={0.08}

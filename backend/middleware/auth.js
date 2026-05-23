@@ -11,7 +11,7 @@ const auth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("isActive");
+    const user = await User.findById(decoded.id).select("isActive isAccountVerified");
     if (!user || !user.isActive) {
       return res.status(403).json({ success: false, message: "Account deactivated" });
     }
@@ -19,6 +19,7 @@ const auth = async (req, res, next) => {
     req.user = {
       id: decoded.id,
       role: decoded.role,
+      isAccountVerified: user.isAccountVerified,
     };
     next();
   } catch (error) {
@@ -35,4 +36,14 @@ const rolecheck = (roles) => {
   };
 };
 
-export { auth, rolecheck };
+const requireVerification = (req, res, next) => {
+  if (!req.user.isAccountVerified) {
+    return res.status(403).json({
+      success: false,
+      message: "Your account must be verified by admin before performing this action",
+    });
+  }
+  next();
+};
+
+export { auth, rolecheck, requireVerification };

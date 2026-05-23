@@ -14,6 +14,7 @@ import {
   RefreshCw,
   CheckCircle,
   Clock,
+  ShieldAlert,
 } from "lucide-react";
 import InfoChip from "./info-chip";
 
@@ -46,6 +47,7 @@ export type MyOffer = {
 type Props = {
   order: Order;
   myOffer: MyOffer | null;
+  isVerified: boolean;
   onBid: () => void;
 };
 
@@ -166,11 +168,30 @@ function MyBidSummary({ offer }: { offer: MyOffer }) {
 
 function ActionButtons({
   hasPendingBid,
+  isVerified,
   onBid,
 }: {
   hasPendingBid: boolean;
+  isVerified: boolean;
   onBid: () => void;
 }) {
+  if (!isVerified) {
+    return (
+      <div className="flex flex-col gap-2 pt-1 border-t border-[#F5F5F5]">
+        <button
+          disabled
+          className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-gray-200 text-gray-400 text-sm font-medium rounded-xl cursor-not-allowed"
+        >
+          <ShieldAlert size={15} />
+          Verification Required
+        </button>
+        <p className="text-[10px] text-center text-[#B0B7C3] leading-relaxed">
+          Complete admin verification to place bids
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-2 pt-1 border-t border-[#F5F5F5]">
       <button
@@ -200,7 +221,7 @@ function ActionButtons({
   );
 }
 
-export default function OrderCard({ order, myOffer, onBid }: Props) {
+export default function OrderCard({ order, myOffer, isVerified, onBid }: Props) {
   const router = useRouter();
   const hasPendingBid = !!(myOffer && myOffer.status === "pending");
 
@@ -225,7 +246,7 @@ export default function OrderCard({ order, myOffer, onBid }: Props) {
 
       {hasPendingBid && <MyBidSummary offer={myOffer!} />}
 
-      <ActionButtons hasPendingBid={hasPendingBid} onBid={onBid} />
+      <ActionButtons hasPendingBid={hasPendingBid} isVerified={isVerified} onBid={onBid} />
     </div>
   );
 }
