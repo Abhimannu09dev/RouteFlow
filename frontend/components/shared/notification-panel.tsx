@@ -109,6 +109,16 @@ export default function NotificationPanel({ role }: Props) {
       });
     });
 
+    socket.on("connect_error", (err) => {
+      console.error("Notification socket connection error:", err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      if (reason !== "io client disconnect") {
+        console.warn("Notification socket disconnected:", reason);
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -143,7 +153,13 @@ export default function NotificationPanel({ role }: Props) {
       if (role === "manufacturer") {
         router.push(`/manufacturer/order-management/${notif.orderId}`);
       } else if (role === "logistics") {
-        router.push("/logistics/history");
+        if (notif.type === "new_order") {
+          router.push(`/logistics/orders-placement/${notif.orderId}`);
+        } else if (notif.type === "bid_rejected") {
+          router.push("/logistics/bids");
+        } else {
+          router.push("/logistics/history");
+        }
       }
     }
   }

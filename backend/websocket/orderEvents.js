@@ -1,5 +1,6 @@
 import Notification from "../models/notificationModel.js";
-import { notifyUser, notifyRole } from "./index.js";
+import User from "../models/userModel.js";
+import { notifyUser } from "./index.js";
 
 //  Helper: save to DB and emit via socket
 const createAndSend = async (recipientId, type, title, message, orderId) => {
@@ -21,12 +22,21 @@ const createAndSend = async (recipientId, type, title, message, orderId) => {
 //  New order placed — notify all logistics companies
 const notifyLogisticsNewOrder = async (order) => {
   try {
-    notifyRole("logistics", {
-      type: "new_order",
-      title: "New Order Available",
-      message: `A new shipment from ${order.routeFrom} to ${order.routeTo} is available for bidding.`,
-      orderId: order.orderId,
-    });
+    const logisticsUsers = await User.find(
+      { role: "logistics", isActive: true },
+      { _id: 1 },
+    );
+    await Promise.all(
+      logisticsUsers.map((user) =>
+        createAndSend(
+          user._id,
+          "new_order",
+          "New Order Available",
+          `A new shipment from ${order.routeFrom} to ${order.routeTo} is available for bidding.`,
+          order.orderId,
+        ),
+      ),
+    );
   } catch (error) {
     console.error("notifyLogisticsNewOrder error:", error.message);
   }

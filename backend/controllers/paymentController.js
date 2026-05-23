@@ -178,6 +178,14 @@ const verifyKhalti = async (req, res) => {
         .json({ success: false, message: "Missing pidx or paymentId" });
     }
 
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
+    }
+    if (payment.payerId.toString() !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
     const khaltiRes = await fetch(KHALTI_LOOKUP_URL, {
       method: "POST",
       headers: {
@@ -190,17 +198,17 @@ const verifyKhalti = async (req, res) => {
     const khaltiData = await khaltiRes.json();
 
     if (!khaltiRes.ok) {
-      await Payment.findByIdAndUpdate(paymentId, { status: "failed" });
+      payment.status = "failed";
+      await payment.save();
       return res
         .status(400)
         .json({ success: false, message: "Payment verification failed" });
     }
 
     const isCompleted = khaltiData.status === "Completed";
-    await Payment.findByIdAndUpdate(paymentId, {
-      status: isCompleted ? "completed" : "failed",
-      transactionId: khaltiData.transaction_id || null,
-    });
+    payment.status = isCompleted ? "completed" : "failed";
+    payment.transactionId = khaltiData.transaction_id || null;
+    await payment.save();
 
     return res.status(200).json({
       success: isCompleted,
@@ -306,10 +314,19 @@ const verifyEsewa = async (req, res) => {
         .json({ success: false, message: "Missing data or paymentId" });
     }
 
+    const payment = await Payment.findById(paymentId);
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found" });
+    }
+    if (payment.payerId.toString() !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
     const decoded = JSON.parse(Buffer.from(data, "base64").toString("utf-8"));
 
     if (decoded.status !== "COMPLETE") {
-      await Payment.findByIdAndUpdate(paymentId, { status: "failed" });
+      payment.status = "failed";
+      await payment.save();
       return res.status(200).json({ success: false, status: decoded.status });
     }
 
@@ -321,11 +338,10 @@ const verifyEsewa = async (req, res) => {
       verifyData.status === "COMPLETE" &&
       verifyData.transaction_uuid === decoded.transaction_uuid;
 
-    await Payment.findByIdAndUpdate(paymentId, {
-      status: isCompleted ? "completed" : "failed",
-      refId: decoded.transaction_code || null,
-      transactionId: decoded.transaction_uuid || null,
-    });
+    payment.status = isCompleted ? "completed" : "failed";
+    payment.refId = decoded.transaction_code || null;
+    payment.transactionId = decoded.transaction_uuid || null;
+    await payment.save();
 
     return res.status(200).json({
       success: isCompleted,

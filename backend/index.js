@@ -53,7 +53,10 @@ app.get("/uploads/:userId/:filename", auth, async (req, res) => {
     return res.status(403).json({ success: false, message: "Not authorized" });
   }
 
-  const filePath = path.join(uploadDir, filename);
+  const filePath = path.join(uploadDir, userId, filename);
+  if (!filePath.startsWith(uploadDir + path.sep)) {
+    return res.status(400).json({ success: false, message: "Invalid file path" });
+  }
   res.sendFile(filePath, (err) => {
     if (err) {
       return res.status(404).json({ success: false, message: "File not found" });

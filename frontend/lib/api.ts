@@ -141,9 +141,6 @@ export const orderAPI = {
   getOrderStats: (): Promise<{ success: boolean; stats: OrderStats }> =>
     apiFetch("/orders/stats"),
 
-  acceptOrder: (orderId: string) =>
-    apiFetch(`/orders/${orderId}/accept`, { method: "PUT" }),
-
   updateStatus: (orderId: string, status: string) =>
     apiFetch(`/orders/${orderId}/status`, {
       method: "PUT",

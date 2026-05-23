@@ -47,7 +47,8 @@ function initWebSocket(server) {
 
   io.on("connection", (socket) => {
     const userId = socket.userId;
-    userSocketMap[userId] = socket.id;
+    if (!userSocketMap[userId]) userSocketMap[userId] = new Set();
+    userSocketMap[userId].add(socket.id);
     console.log(`Socket connected: user ${userId} (${socket.userRole})`);
     socket.join(socket.userRole);
 
@@ -165,7 +166,8 @@ function initWebSocket(server) {
 
     //  Chat: close chat when order is delivered
     socket.on("disconnect", () => {
-      delete userSocketMap[userId];
+      userSocketMap[userId]?.delete(socket.id);
+      if (userSocketMap[userId]?.size === 0) delete userSocketMap[userId];
       console.log(`Socket disconnected: user ${userId}`);
     });
   });
@@ -177,9 +179,13 @@ function initWebSocket(server) {
 //  Notification helpers
 const notifyUser = (userId, notification) => {
   if (!io) return;
-  const socketId = userSocketMap[userId?.toString()];
-  if (socketId) {
-    io.to(socketId).emit("notification", notification);
+  const sockets = userSocketMap[userId?.toString()];
+  if (sockets && sockets.size > 0) {
+    sockets.forEach((socketId) =>
+      io.to(socketId).emit("notification", notification),
+    );
+  } else {
+    console.warn(`notifyUser: no socket found for user ${userId}`);
   }
 };
 
