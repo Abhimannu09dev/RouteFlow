@@ -25,8 +25,7 @@ function initWebSocket(server) {
     },
   });
 
-  // Auth middleware — verify JWT from cookie
-  io.use(async (socket, next) => {
+  io.use((socket, next) => {
     try {
       const cookieHeader = socket.handshake.headers.cookie || "";
       const tokenFromCookie = cookieHeader
@@ -34,11 +33,9 @@ function initWebSocket(server) {
         .find((c) => c.trim().startsWith("token="))
         ?.split("=")[1];
       const token = tokenFromCookie || socket.handshake.auth?.token;
-      if (!token) {
-        return next(new Error("Authentication required"));
-      }
+      if (!token) return next(new Error("Authentication required"));
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id).select("isActive");
+      const user = User.findById(decoded.id);
       if (!user?.isActive) return next(new Error("Account is deactivated"));
       socket.userId = decoded.id;
       socket.userRole = decoded.role;
@@ -55,48 +52,42 @@ function initWebSocket(server) {
     console.log(`Socket connected: user ${userId} (${socket.userRole})`);
     socket.join(socket.userRole);
 
-    // Client emits: { orderId }
-    socket.on("join_chat", async ({ orderId }) => {
+    socket.on("join_chat", ({ orderId }) => {
       try {
         if (!orderId) return;
-
-        const order = await Order.findById(orderId);
+        const order = Order.findById(parseInt(orderId, 10));
         if (!order) return;
 
         const allowedStatuses = ["accepted", "in transit", "delivered"];
         if (!allowedStatuses.includes(order.status)) return;
 
-        const manufacturerId = order.manufacturer?.toString();
-        const logisticsId = order.logistics?.toString();
-        const uid = userId.toString();
+        const manufacturerId = String(order.manufacturer?.id);
+        const logisticsId = String(order.logistics?.id);
+        const uid = String(userId);
 
-        // Only the two participants may join this chat room
         if (uid !== manufacturerId && uid !== logisticsId) return;
 
-        socket.join(`chat_${orderId}`);
-        console.log(`User ${userId} joined chat room for order ${orderId}`);
+        socket.join(`chat_${order.id}`);
+        console.log(`User ${userId} joined chat room for order ${order.id}`);
       } catch (err) {
         console.error("join_chat error:", err);
       }
     });
 
-    //  Chat: leave a chat room
     socket.on("leave_chat", ({ orderId }) => {
       if (!orderId) return;
       socket.leave(`chat_${orderId}`);
     });
 
-    socket.on("send_message", async ({ orderId, content }) => {
+    socket.on("send_message", ({ orderId, content }) => {
       try {
         if (!orderId || !content?.trim()) return;
 
-        const order = await Order.findById(orderId);
+        const order = Order.findById(parseInt(orderId, 10));
         if (!order) return;
 
         if (order.status === "delivered") {
-          socket.emit("chat_error", {
-            message: "Chat is closed for delivered orders",
-          });
+          socket.emit("chat_error", { message: "Chat is closed for delivered orders" });
           return;
         }
 
@@ -106,62 +97,43 @@ function initWebSocket(server) {
           return;
         }
 
-        const manufacturerId = order.manufacturer?.toString();
-        const logisticsId = order.logistics?.toString();
-        const uid = userId.toString();
+        const manufacturerId = String(order.manufacturer?.id);
+        const logisticsId = String(order.logistics?.id);
+        const uid = String(userId);
 
         if (uid !== manufacturerId && uid !== logisticsId) {
           socket.emit("chat_error", { message: "Not authorized" });
           return;
         }
 
-        const derivedReceiverId =
-          uid === manufacturerId ? logisticsId : manufacturerId;
-
+        const derivedReceiverId = uid === manufacturerId ? parseInt(logisticsId, 10) : parseInt(manufacturerId, 10);
         if (!derivedReceiverId) {
           socket.emit("chat_error", { message: "Unable to determine receiver" });
           return;
         }
 
-        const message = await Message.create({
-          orderId,
-          senderId: userId,
-          receiverId: derivedReceiverId,
-          content: content.trim(),
-        });
-
-        await message.populate("senderId", "companyName email role");
-        io.to(`chat_${orderId}`).emit("message_received", message);
+        const message = Message.create({ orderId: order.id, senderId: userId, receiverId: derivedReceiverId, content: content.trim() });
+        io.to(`chat_${order.id}`).emit("message_received", message);
       } catch (err) {
         console.error("send_message socket error:", err);
         socket.emit("chat_error", { message: "Failed to send message" });
       }
     });
 
-    //  Chat: mark messages as read
-    socket.on("mark_read", async ({ orderId }) => {
+    socket.on("mark_read", ({ orderId }) => {
       try {
         if (!orderId) return;
-        await Message.updateMany(
-          { orderId, receiverId: userId, isRead: false },
-          { $set: { isRead: true } },
-        );
-        // Notify the sender their messages were read
-        const order = await Order.findById(orderId).select(
-          "manufacturer logistics",
-        );
+        const oid = parseInt(orderId, 10);
+        Message.markRead(oid, userId);
+
+        const order = Order.findById(oid);
         if (!order) return;
-        const uid = userId.toString();
-        const otherId =
-          order.manufacturer?.toString() === uid
-            ? order.logistics?.toString()
-            : order.manufacturer?.toString();
+        const uid = String(userId);
+        const otherId = String(order.manufacturer?.id) === uid ? String(order.logistics?.id) : String(order.manufacturer?.id);
         if (otherId) {
           const otherSockets = userSocketMap[otherId];
           if (otherSockets?.size > 0) {
-            [...otherSockets].forEach((sid) =>
-              io.to(sid).emit("messages_read", { orderId }),
-            );
+            [...otherSockets].forEach((sid) => io.to(sid).emit("messages_read", { orderId: oid }));
           }
         }
       } catch (err) {
@@ -169,7 +141,6 @@ function initWebSocket(server) {
       }
     });
 
-    //  Chat: close chat when order is delivered
     socket.on("disconnect", () => {
       userSocketMap[userId]?.delete(socket.id);
       if (userSocketMap[userId]?.size === 0) delete userSocketMap[userId];
@@ -181,14 +152,11 @@ function initWebSocket(server) {
   return io;
 }
 
-//  Notification helpers
 const notifyUser = (userId, notification) => {
   if (!io) return;
-  const sockets = userSocketMap[userId?.toString()];
+  const sockets = userSocketMap[String(userId)];
   if (sockets && sockets.size > 0) {
-    sockets.forEach((socketId) =>
-      io.to(socketId).emit("notification", notification),
-    );
+    sockets.forEach((socketId) => io.to(socketId).emit("notification", notification));
   } else {
     console.warn(`notifyUser: no socket found for user ${userId}`);
   }
@@ -201,10 +169,7 @@ const notifyRole = (role, notification) => {
 
 const closeChatRoom = (orderId) => {
   if (!io) return;
-  io.to(`chat_${orderId}`).emit("chat_closed", {
-    orderId,
-    message: "This order has been delivered. The chat is now closed.",
-  });
+  io.to(`chat_${orderId}`).emit("chat_closed", { orderId, message: "This order has been delivered. The chat is now closed." });
 };
 
 const getIO = () => io;

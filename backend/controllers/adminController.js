@@ -1,62 +1,33 @@
-import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
-import { HIDDEN_FIELDS } from "../utils/userFields.js";
 
-// Get platform-wide stats for admin dashboard
-const getAdminStats = async (req, res) => {
+const getAdminStats = (req, res) => {
   try {
-    const [
-      totalUsers,
-      pendingVerification,
-      verifiedUsers,
-      manufacturers,
-      logistics,
-      totalOrders,
-      pendingOrders,
-      deliveredOrders,
-    ] = await Promise.all([
-      User.countDocuments({ role: { $ne: "admin" } }),
-      User.countDocuments({
-        submittedForVerification: true,
-        isAccountVerified: false,
-        role: { $ne: "admin" },
-      }),
-      User.countDocuments({ isAccountVerified: true }),
-      User.countDocuments({ role: "manufacturer" }),
-      User.countDocuments({ role: "logistics" }),
-      Order.countDocuments(),
-      Order.countDocuments({ status: "pending" }),
-      Order.countDocuments({ status: "delivered" }),
-    ]);
+    const totalUsers = User.count({ roleNe: "admin" });
+    const pendingVerification = User.count({ submittedForVerification: true, isAccountVerified: false, roleNe: "admin" });
+    const verifiedUsers = User.count({ isAccountVerified: true });
+    const manufacturers = User.count({ role: "manufacturer" });
+    const logistics = User.count({ role: "logistics" });
+    const totalOrders = Order.count({});
+    const pendingOrders = Order.count({ status: "pending" });
+    const deliveredOrders = Order.count({ status: "delivered" });
 
     return res.status(200).json({
       success: true,
-      stats: {
-        totalUsers,
-        pendingVerification,
-        verifiedUsers,
-        manufacturers,
-        logistics,
-        totalOrders,
-        pendingOrders,
-        deliveredOrders,
-      },
+      stats: { totalUsers, pendingVerification, verifiedUsers, manufacturers, logistics, totalOrders, pendingOrders, deliveredOrders },
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get all users with optional filters and pagination
-// Query params: ?status=pending|verified|rejected&role=manufacturer|logistics&search=text&page=1&limit=10
-const getAllUsers = async (req, res) => {
+const getAllUsers = (req, res) => {
   try {
     const { status, role, search } = req.query;
     const { page, limit, skip } = parsePagination(req.query);
 
-    const filter = { role: { $ne: "admin" } };
+    const filter = { roleNe: "admin" };
 
     if (status === "pending") {
       filter.submittedForVerification = true;
@@ -64,144 +35,86 @@ const getAllUsers = async (req, res) => {
     } else if (status === "verified") {
       filter.isAccountVerified = true;
     } else if (status === "rejected") {
-      filter.rejectionReason = { $exists: true, $ne: null };
-      filter.isAccountVerified = false;
+      filter.hasRejectionReason = true;
     }
 
     if (role === "manufacturer" || role === "logistics") {
+      delete filter.roleNe;
       filter.role = role;
     }
 
-    if (search) {
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.$or = [
-        { companyName: { $regex: safe, $options: "i" } },
-        { email: { $regex: safe, $options: "i" } },
-      ];
-    }
+    if (search) filter.search = search;
 
-    const [users, total] = await Promise.all([
-      User.find(filter)
-        .select(HIDDEN_FIELDS)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      User.countDocuments(filter),
-    ]);
+    const users = User.findAll(filter, { sort: "created_at DESC", limit, skip });
+    const total = User.count(filter);
 
-    return res.status(200).json({
-      success: true,
-      users,
-      pagination: buildPaginationMeta(total, page, limit),
-    });
+    return res.status(200).json({ success: true, users, pagination: buildPaginationMeta(total, page, limit) });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get a single user by ID with their order stats
-const getUserById = async (req, res) => {
+const getUserById = (req, res) => {
   try {
     const { userId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const user = await User.findById(userId).select(HIDDEN_FIELDS);
+    const user = User.findById(uid);
     if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const orderFilter =
-      user.role === "manufacturer"
-        ? { manufacturer: userId }
-        : { logistics: userId };
+    const orderFilter = user.role === "manufacturer" ? { manufacturerId: uid } : { logisticsId: uid };
+    const totalOrders = Order.count(orderFilter);
+    const activeOrders = Order.count({ ...orderFilter, statusIn: ["accepted", "in transit"] });
 
-    const [totalOrders, activeOrders] = await Promise.all([
-      Order.countDocuments(orderFilter),
-      Order.countDocuments({
-        ...orderFilter,
-        status: { $in: ["accepted", "in transit"] },
-      }),
-    ]);
-
-    return res.status(200).json({
-      success: true,
-      user,
-      orderStats: { totalOrders, activeOrders },
-    });
+    return res.status(200).json({ success: true, user, orderStats: { totalOrders, activeOrders } });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Approve a user's account verification
-const approveUser = async (req, res) => {
+const approveUser = (req, res) => {
   try {
     const { userId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const existing = await User.findById(userId).select("role companyName");
+    const existing = User.findById(uid);
     if (!existing || existing.role === "admin") {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        isAccountVerified: true,
-        submittedForVerification: false,
-        rejectionReason: undefined,
-      },
-      { new: true },
-    ).select(HIDDEN_FIELDS);
+    const user = User.update(uid, { isAccountVerified: true, submittedForVerification: false, rejectionReason: null });
 
-    return res.status(200).json({
-      success: true,
-      message: `${user.companyName} has been approved`,
-      user,
-    });
+    return res.status(200).json({ success: true, message: `${user.companyName} has been approved`, user });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Reject a user's verification with a reason
-const rejectUser = async (req, res) => {
+const rejectUser = (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const existing = await User.findById(userId).select("role companyName");
+    const existing = User.findById(uid);
     if (!existing || existing.role === "admin") {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        isAccountVerified: false,
-        submittedForVerification: false,
-        rejectionReason: reason.trim(),
-      },
-      { new: true },
-    ).select(HIDDEN_FIELDS);
+    const user = User.update(uid, { isAccountVerified: false, submittedForVerification: false, rejectionReason: reason.trim() });
 
-    return res.status(200).json({
-      success: true,
-      message: `${user.companyName} has been rejected`,
-      user,
-    });
+    return res.status(200).json({ success: true, message: `${user.companyName} has been rejected`, user });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error" });
   }

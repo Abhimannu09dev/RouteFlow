@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import User from "../models/userModel.js";
-import { HIDDEN_FIELDS } from "../utils/userFields.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +16,6 @@ const VALID_DOCUMENT_TYPES = [
   "other",
 ];
 
-// Delete a file from the uploads directory on disk
 const deleteFile = (filename) => {
   if (!filename) return;
   const filepath = path.join(__dirname, "../uploads", filename);
@@ -26,97 +24,52 @@ const deleteFile = (filename) => {
   });
 };
 
-// Get the logged-in user's full profile
-const getProfile = async (req, res) => {
+const getProfile = (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select(HIDDEN_FIELDS);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
+    const user = User.findWithDocuments(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
     return res.status(200).json({ success: true, user });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Update profile text fields and optionally replace the company logo
-const updateProfile = async (req, res) => {
+const updateProfile = (req, res) => {
   try {
-    const {
-      companyName,
-      contactNumber,
-      panNo,
-      companyLocation,
-      companyDescription,
-      companyWebsite,
-    } = req.body;
+    const { companyName, contactNumber, panNo, companyLocation, companyDescription, companyWebsite } = req.body;
 
     const allowedUpdates = {};
     if (companyName) allowedUpdates.companyName = companyName;
     if (contactNumber) allowedUpdates.contactNumber = contactNumber;
     if (panNo) allowedUpdates.panNo = panNo;
     if (companyLocation) allowedUpdates.companyLocation = companyLocation;
-    if (companyDescription)
-      allowedUpdates.companyDescription = companyDescription;
+    if (companyDescription) allowedUpdates.companyDescription = companyDescription;
     if (companyWebsite) allowedUpdates.companyWebsite = companyWebsite;
 
     if (req.files?.companyLogo?.[0]) {
       const logoFile = req.files.companyLogo[0];
-
-      // Delete old logo from disk
-      const existingUser = await User.findById(req.user.id).select(
-        "companyLogo",
-      );
-      if (existingUser?.companyLogo) {
-        deleteFile(path.basename(existingUser.companyLogo));
-      }
-
+      const existingUser = User.findById(req.user.id);
+      if (existingUser?.companyLogo) deleteFile(path.basename(existingUser.companyLogo));
       allowedUpdates.companyLogo = `${BASE_URL}/uploads/${req.user.id}/${logoFile.filename}`;
     }
 
     if (Object.keys(allowedUpdates).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No valid fields provided to update",
-      });
+      return res.status(400).json({ success: false, message: "No valid fields provided to update" });
     }
 
-    const updated = await User.findByIdAndUpdate(
-      req.user.id,
-      { $set: allowedUpdates },
-      { new: true, runValidators: true },
-    ).select(HIDDEN_FIELDS);
+    const updated = User.update(req.user.id, allowedUpdates);
+    if (!updated) return res.status(404).json({ success: false, message: "User not found" });
 
-    if (!updated) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "Profile updated successfully",
-      user: updated,
-    });
+    return res.status(200).json({ success: true, message: "Profile updated successfully", user: updated });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Upload one or more company documents
-const uploadDocuments = async (req, res) => {
+const uploadDocuments = (req, res) => {
   try {
     if (!req.files?.documents?.length) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No documents uploaded" });
+      return res.status(400).json({ success: false, message: "No documents uploaded" });
     }
 
     const files = req.files.documents;
@@ -127,153 +80,79 @@ const uploadDocuments = async (req, res) => {
       documentTypes = JSON.parse(req.body.documentTypes || "[]");
       documentLabels = JSON.parse(req.body.documentLabels || "[]");
     } catch {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Invalid documentTypes or documentLabels format. Must be JSON arrays.",
-      });
+      return res.status(400).json({ success: false, message: "Invalid documentTypes or documentLabels format. Must be JSON arrays." });
     }
 
     if (documentTypes.length !== files.length) {
-      return res.status(400).json({
-        success: false,
-        message: "documentTypes must have one entry per uploaded file",
-      });
+      return res.status(400).json({ success: false, message: "documentTypes must have one entry per uploaded file" });
     }
 
     for (const type of documentTypes) {
       if (!VALID_DOCUMENT_TYPES.includes(type)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid document type: "${type}". Must be one of: ${VALID_DOCUMENT_TYPES.join(", ")}`,
-        });
+        return res.status(400).json({ success: false, message: `Invalid document type: "${type}". Must be one of: ${VALID_DOCUMENT_TYPES.join(", ")}` });
       }
     }
 
-    const newDocuments = files.map((file, index) => ({
-      type: documentTypes[index],
-      label: documentLabels[index] || "",
-      filename: file.filename,
-      url: `${BASE_URL}/uploads/${req.user.id}/${file.filename}`,
-      uploadedAt: new Date(),
-    }));
+    const newDocuments = files.map((file, index) =>
+      User.addDocument(req.user.id, {
+        type: documentTypes[index],
+        label: documentLabels[index] || "",
+        filename: file.filename,
+        url: `${BASE_URL}/uploads/${req.user.id}/${file.filename}`,
+        uploadedAt: new Date().toISOString(),
+      })
+    );
 
-    const updated = await User.findByIdAndUpdate(
-      req.user.id,
-      { $push: { documents: { $each: newDocuments } } },
-      { new: true },
-    ).select(HIDDEN_FIELDS);
+    const documents = User.getDocuments(req.user.id);
 
-    if (!updated) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `${files.length} document(s) uploaded successfully`,
-      documents: updated.documents,
-    });
+    return res.status(200).json({ success: true, message: `${files.length} document(s) uploaded successfully`, documents });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Delete a specific document by its subdocument ID
-const deleteDocument = async (req, res) => {
+const deleteDocument = (req, res) => {
   try {
     const { documentId } = req.params;
 
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
-    const document = user.documents.id(documentId);
-    if (!document) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Document not found" });
-    }
+    const document = User.getDocumentById(parseInt(documentId, 10));
+    if (!document) return res.status(404).json({ success: false, message: "Document not found" });
 
     deleteFile(document.filename);
-    user.documents.pull(documentId);
-    await user.save();
+    User.deleteDocument(document.id);
 
-    return res.status(200).json({
-      success: true,
-      message: "Document deleted successfully",
-      documents: user.documents,
-    });
+    const documents = User.getDocuments(req.user.id);
+    return res.status(200).json({ success: true, message: "Document deleted successfully", documents });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-// Submit profile for admin verification
-const submitForVerification = async (req, res) => {
+const submitForVerification = (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-    if (user.isAccountVerified) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Your account is already verified" });
-    }
+    const user = User.findWithDocuments(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (user.isAccountVerified) return res.status(400).json({ success: false, message: "Your account is already verified" });
     if (user.submittedForVerification) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Already submitted for verification. Please wait for admin review.",
-      });
+      return res.status(400).json({ success: false, message: "Already submitted for verification. Please wait for admin review." });
     }
 
     const requiredFields = ["contactNumber", "panNo", "companyLocation"];
     const missingFields = requiredFields.filter((field) => !user[field]);
     if (missingFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Please complete your profile before submitting. Missing: ${missingFields.join(", ")}`,
-      });
+      return res.status(400).json({ success: false, message: `Please complete your profile before submitting. Missing: ${missingFields.join(", ")}` });
     }
 
     if (!user.documents?.length) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Please upload at least one company document before submitting",
-      });
+      return res.status(400).json({ success: false, message: "Please upload at least one company document before submitting" });
     }
 
-    user.submittedForVerification = true;
-    await user.save();
+    User.update(user.id, { submittedForVerification: true });
 
-    return res.status(200).json({
-      success: true,
-      message: "Profile submitted for verification successfully",
-    });
+    return res.status(200).json({ success: true, message: "Profile submitted for verification successfully" });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error", error: error.message });
   }
 };
 
-export {
-  getProfile,
-  updateProfile,
-  uploadDocuments,
-  deleteDocument,
-  submitForVerification,
-};
+export { getProfile, updateProfile, uploadDocuments, deleteDocument, submitForVerification };

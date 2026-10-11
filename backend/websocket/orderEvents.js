@@ -2,16 +2,9 @@ import Notification from "../models/notificationModel.js";
 import User from "../models/userModel.js";
 import { notifyUser } from "./index.js";
 
-//  Helper: save to DB and emit via socket
-const createAndSend = async (recipientId, type, title, message, orderId) => {
+const createAndSend = (recipientId, type, title, message, orderId) => {
   try {
-    const notification = await Notification.create({
-      recipient: recipientId,
-      type,
-      title,
-      message,
-      orderId,
-    });
+    const notification = Notification.create({ recipientId, type, title, message, orderId });
     notifyUser(recipientId, notification);
     return notification;
   } catch (error) {
@@ -19,33 +12,27 @@ const createAndSend = async (recipientId, type, title, message, orderId) => {
   }
 };
 
-//  New order placed — notify all logistics companies
-const notifyLogisticsNewOrder = async (order) => {
+const notifyLogisticsNewOrder = (order) => {
   try {
-    const logisticsUsers = await User.find(
-      { role: "logistics", isActive: true },
-      { _id: 1 },
-    );
-    await Promise.all(
-      logisticsUsers.map((user) =>
-        createAndSend(
-          user._id,
-          "new_order",
-          "New Order Available",
-          `A new shipment from ${order.routeFrom} to ${order.routeTo} is available for bidding.`,
-          order.orderId,
-        ),
-      ),
+    const logisticsUsers = User.findAll({ role: "logistics", isActive: true });
+    logisticsUsers.forEach((user) =>
+      createAndSend(
+        user.id,
+        "new_order",
+        "New Order Available",
+        `A new shipment from ${order.routeFrom} to ${order.routeTo} is available for bidding.`,
+        order.orderId,
+      )
     );
   } catch (error) {
     console.error("notifyLogisticsNewOrder error:", error.message);
   }
 };
 
-//  New bid received — notify the manufacturer
-const notifyManufacturerNewBid = async (order, offer, logisticsCompanyName) => {
+const notifyManufacturerNewBid = (order, offer, logisticsCompanyName) => {
+  const manufacturerId = order.manufacturer?.id ?? order.manufacturer;
   return createAndSend(
-    order.manufacturer,
+    manufacturerId,
     "new_bid",
     "New Price Offer Received",
     `${logisticsCompanyName} submitted a bid of NPR ${offer.proposedPrice.toLocaleString()} on order ${order.orderId}.`,
@@ -53,10 +40,10 @@ const notifyManufacturerNewBid = async (order, offer, logisticsCompanyName) => {
   );
 };
 
-//  Bid accepted — notify the winning logistics company
-const notifyLogisticsBidAccepted = async (offer, order) => {
+const notifyLogisticsBidAccepted = (offer, order) => {
+  const logisticsId = offer.logistics?.id ?? offer.logistics;
   return createAndSend(
-    offer.logistics,
+    logisticsId,
     "bid_accepted",
     "Your Bid Was Accepted! 🎉",
     `Your bid of NPR ${offer.proposedPrice.toLocaleString()} for order ${order.orderId} was accepted. Check your History tab.`,
@@ -64,12 +51,7 @@ const notifyLogisticsBidAccepted = async (offer, order) => {
   );
 };
 
-//  Bid rejected — notify the losing logistics companies
-const notifyLogisticsBidRejected = async (
-  logisticsId,
-  orderId,
-  proposedPrice,
-) => {
+const notifyLogisticsBidRejected = (logisticsId, orderId, proposedPrice) => {
   return createAndSend(
     logisticsId,
     "bid_rejected",
@@ -79,12 +61,7 @@ const notifyLogisticsBidRejected = async (
   );
 };
 
-//  Status update — notify manufacturer
-const notifyManufacturerStatusUpdate = async (
-  order,
-  newStatus,
-  logisticsCompanyName,
-) => {
+const notifyManufacturerStatusUpdate = (order, newStatus, logisticsCompanyName) => {
   const statusMessages = {
     "in transit": `Your order ${order.orderId} is now in transit with ${logisticsCompanyName}.`,
     delivered: `Your order ${order.orderId} has been delivered by ${logisticsCompanyName}.`,
@@ -94,8 +71,9 @@ const notifyManufacturerStatusUpdate = async (
   const message = statusMessages[newStatus];
   if (!message) return;
 
+  const manufacturerId = order.manufacturer?.id ?? order.manufacturer;
   return createAndSend(
-    order.manufacturer,
+    manufacturerId,
     "status_update",
     `Order ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
     message,

@@ -3,12 +3,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../models/orderModel.js", () => ({
   default: {
     findById: vi.fn(),
+    findForParticipant: vi.fn(),
   },
 }));
 
 vi.mock("../models/messageModel.js", () => ({
   default: {
     create: vi.fn(),
+    findByOrderId: vi.fn(),
+    markRead: vi.fn(),
+    countUnread: vi.fn(),
+    unreadByOrder: vi.fn(),
   },
 }));
 
@@ -18,7 +23,7 @@ vi.mock("../websocket/index.js", () => ({
 
 import Order from "../models/orderModel.js";
 import Message from "../models/messageModel.js";
-import { sendMessage } from "../controllers/chatController.js";
+import { sendMessage, getUnreadCount } from "../controllers/chatController.js";
 
 const mockRes = () => {
   const res = {};
@@ -32,91 +37,95 @@ describe("sendMessage", () => {
     vi.clearAllMocks();
   });
 
-  it("should derive receiverId from order, ignoring client input", async () => {
+  it("should derive receiverId from order, ignoring client input", () => {
     const mockOrder = {
-      _id: "order1",
+      id: 1, _id: 1,
       status: "accepted",
-      manufacturer: { toString: () => "user1" },
-      logistics: { toString: () => "user2" },
+      manufacturer: { id: 1, _id: 1 },
+      logistics: { id: 2, _id: 2 },
     };
-    Order.findById.mockResolvedValue(mockOrder);
+    Order.findById.mockReturnValue(mockOrder);
 
     const mockMessage = {
-      _id: "msg1",
-      orderId: "order1",
-      senderId: "user1",
-      receiverId: "user2",
+      id: 1, _id: 1,
+      orderId: 1,
+      senderId: 1,
+      receiverId: 2,
       content: "hello",
-      populate: vi.fn().mockResolvedValue({
-        senderId: { companyName: "Test Co", email: "test@test.com", role: "manufacturer" },
-      }),
+      sender: { companyName: "Test Co", email: "test@test.com", role: "manufacturer" },
     };
-    Message.create.mockResolvedValue(mockMessage);
+    Message.create.mockReturnValue(mockMessage);
 
     const req = {
-      user: { id: "user1" },
-      params: { orderId: "order1" },
-      body: { receiverId: "attacker_id", content: "hello" },
+      user: { id: 1 },
+      params: { orderId: "1" },
+      body: { receiverId: 999, content: "hello" },
       file: null,
     };
     const res = mockRes();
 
-    await sendMessage(req, res);
+    sendMessage(req, res);
 
     expect(Message.create).toHaveBeenCalled();
     const savedMessage = Message.create.mock.calls[0][0];
-    expect(savedMessage.receiverId).toBe("user2");
-    expect(savedMessage.receiverId).not.toBe("attacker_id");
+    expect(savedMessage.receiverId).toBe(2);
+    expect(savedMessage.receiverId).not.toBe(999);
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
-  it("should reject if order is delivered", async () => {
+  it("should reject if order is delivered", () => {
     const mockOrder = {
-      _id: "order1",
+      id: 1, _id: 1,
       status: "delivered",
-      manufacturer: { toString: () => "user1" },
-      logistics: { toString: () => "user2" },
+      manufacturer: { id: 1, _id: 1 },
+      logistics: { id: 2, _id: 2 },
     };
-    Order.findById.mockResolvedValue(mockOrder);
+    Order.findById.mockReturnValue(mockOrder);
 
     const req = {
-      user: { id: "user1" },
-      params: { orderId: "order1" },
-      body: { content: "hello" },
+      user: { id: 1 },
+      params: { orderId: "1" },
+      body: { content: "hi" },
       file: null,
     };
     const res = mockRes();
 
-    await sendMessage(req, res);
+    sendMessage(req, res);
 
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "This chat is closed because the order has been delivered" }),
-    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
   });
 
-  it("should return 400 if unable to determine receiver", async () => {
+  it("should reject if user is not a participant", () => {
     const mockOrder = {
-      _id: "order1",
+      id: 1, _id: 1,
       status: "accepted",
-      manufacturer: { toString: () => "user1" },
-      logistics: null,
+      manufacturer: { id: 10, _id: 10 },
+      logistics: { id: 20, _id: 20 },
     };
-    Order.findById.mockResolvedValue(mockOrder);
+    Order.findById.mockReturnValue(mockOrder);
 
     const req = {
-      user: { id: "user1" },
-      params: { orderId: "order1" },
-      body: { content: "hello" },
+      user: { id: 99 },
+      params: { orderId: "1" },
+      body: { content: "hi" },
       file: null,
     };
     const res = mockRes();
 
-    await sendMessage(req, res);
+    sendMessage(req, res);
 
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Unable to determine receiver" }),
-    );
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
+  });
+});
+
+describe("getUnreadCount", () => {
+  it("returns unread count", () => {
+    Message.countUnread.mockReturnValue(5);
+    const req = { user: { id: 1 } };
+    const res = mockRes();
+    getUnreadCount(req, res);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, count: 5 }));
   });
 });

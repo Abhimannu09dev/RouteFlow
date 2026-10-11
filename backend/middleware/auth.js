@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
-const auth = async (req, res, next) => {
+const auth = (req, res, next) => {
   const token = req.cookies.token;
 
   if (!token) {
@@ -11,7 +11,7 @@ const auth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await User.findById(decoded.id).select("isActive isAccountVerified");
+    const user = User.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(403).json({ success: false, message: "Account deactivated" });
     }
