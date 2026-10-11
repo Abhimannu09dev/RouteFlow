@@ -2,14 +2,12 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import User from "../models/userModel.js";
+import { HIDDEN_FIELDS } from "../utils/userFields.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
-
-const HIDDEN_FIELDS =
-  "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires";
 
 const VALID_DOCUMENT_TYPES = [
   "company_registration",

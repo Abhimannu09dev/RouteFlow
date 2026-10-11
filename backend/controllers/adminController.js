@@ -1,23 +1,8 @@
 import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
-
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-const buildPaginationMeta = (total, page, limit) => ({
-  total,
-  page,
-  limit,
-  totalPages: Math.ceil(total / limit),
-});
-
-const HIDDEN_FIELDS =
-  "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
+import { HIDDEN_FIELDS } from "../utils/userFields.js";
 
 // Get platform-wide stats for admin dashboard
 const getAdminStats = async (req, res) => {
@@ -195,12 +180,6 @@ const rejectUser = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ success: false, message: "Invalid user ID" });
-    }
-
-    if (!reason?.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Rejection reason is required" });
     }
 
     const existing = await User.findById(userId).select("role companyName");

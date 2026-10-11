@@ -3,12 +3,24 @@
 import { useEffect, useState } from "react";
 import { Drawer } from "antd";
 import Link from "next/link";
-import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
 import { LogOut, Menu } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "@/contexts/ThemeContext";
 
-const MobileSidebar = ({ pathname }: { pathname: string }) => {
+type NavItem = {
+  labelKey: string;
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+};
+
+type Props = {
+  pathname: string;
+  primaryItems: NavItem[];
+  secondaryItems: NavItem[];
+};
+
+const AppMobileSidebar = ({ pathname, primaryItems, secondaryItems }: Props) => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [open, setOpen] = useState(false);
@@ -16,7 +28,6 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
   const showDrawer = () => setOpen(true);
   const onClose = () => setOpen(false);
 
-  // Close the drawer when navigating to a new route
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
@@ -25,8 +36,6 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
     <aside className="lg:hidden group">
       <div className="w-full p-2 bg-white border-b border-gray-100 flex items-center gap-3">
         <Menu size={24} onClick={showDrawer} className="cursor-pointer text-[#5B6871]" />
-
-        {/* Logo Section */}
         <Image
           src="/Logo.png"
           alt="logo"
@@ -53,9 +62,8 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
         }}
       >
         <div className="overflow-y-auto grow scrollbar space-y-2">
-          {/* Main Items */}
           <div className="flex flex-col gap-1.5">
-            {primarySidebarItems.map((item) => (
+            {primaryItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -71,9 +79,8 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
             ))}
           </div>
 
-          {/* Secondary Items */}
           <div className="flex flex-col space-y-2 mt-7">
-            {secondarySidebarItems.map((item) => (
+            {secondaryItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -102,4 +109,4 @@ const MobileSidebar = ({ pathname }: { pathname: string }) => {
   );
 };
 
-export default MobileSidebar;
+export default AppMobileSidebar;

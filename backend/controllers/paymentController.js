@@ -1,30 +1,15 @@
-import dotenv from "dotenv";
-dotenv.config();
 import crypto from "crypto";
 import Payment from "../models/paymentModel.js";
 import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
 import User from "../models/userModel.js";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 const KHALTI_INITIATE_URL = "https://dev.khalti.com/api/v2/epayment/initiate/";
 const KHALTI_LOOKUP_URL = "https://dev.khalti.com/api/v2/epayment/lookup/";
 const ESEWA_BASE_URL = "https://rc-epay.esewa.com.np";
 const ESEWA_VERIFY_URL = `${ESEWA_BASE_URL}/api/epay/transaction/status/`;
-
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-const buildPaginationMeta = (total, page, limit) => ({
-  total,
-  page,
-  limit,
-  totalPages: Math.ceil(total / limit),
-});
 
 // Verify the order is delivered and the requesting user is the manufacturer
 const resolvePayableOrder = async (orderId, userId) => {

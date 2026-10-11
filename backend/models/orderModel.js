@@ -1,5 +1,4 @@
-import mongoose from "mongoose";
-import { Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const orderSchema = new Schema({
   orderId: { type: String, required: true, unique: true },

@@ -1,4 +1,4 @@
-import OrderManagement from "@/components/manufaturer/order-management/order-management";
+import OrderManagement from "@/components/manufacturer/order-management/order-management";
 
 export default function OrderManagementDashboard() {
   return <OrderManagement />;

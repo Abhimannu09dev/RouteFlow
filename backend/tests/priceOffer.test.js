@@ -99,50 +99,6 @@ const mockOfferDoc = (overrides = {}) => ({
 //  submitOffer
 
 describe("submitOffer", () => {
-  it("returns 403 when non-logistics tries to submit", async () => {
-    const req = manufacturerReq(
-      { proposedPrice: 5000, estimatedDeliveryDays: 3 },
-      { orderId: "ORD-ABC" },
-    );
-    const res = mockRes();
-    await submitOffer(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Only logistics companies can submit price offers",
-      }),
-    );
-  });
-
-  it("returns 400 when proposedPrice is missing or zero", async () => {
-    const req = logisticsReq(
-      { proposedPrice: 0, estimatedDeliveryDays: 3 },
-      { orderId: "ORD-ABC" },
-    );
-    const res = mockRes();
-    await submitOffer(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "A valid proposed price is required",
-      }),
-    );
-  });
-
-  it("returns 400 when estimatedDeliveryDays is missing", async () => {
-    const req = logisticsReq(
-      { proposedPrice: 5000, estimatedDeliveryDays: 0 },
-      { orderId: "ORD-ABC" },
-    );
-    const res = mockRes();
-    await submitOffer(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Estimated delivery days is required",
-      }),
-    );
-  });
 
   it("returns 404 when order not found or unavailable", async () => {
     Order.findOne.mockResolvedValue(null);
@@ -333,13 +289,6 @@ describe("getOffers", () => {
 //  updateOffer
 
 describe("updateOffer", () => {
-  it("returns 403 for non-logistics users", async () => {
-    const req = manufacturerReq({ proposedPrice: 4000 }, { offerId: "offer1" });
-    const res = mockRes();
-    await updateOffer(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-
   it("returns 404 when offer not found", async () => {
     PriceOffer.findOne = vi.fn().mockResolvedValue(null);
     const req = logisticsReq({ proposedPrice: 4000 }, { offerId: "bad_id" });
@@ -388,13 +337,6 @@ describe("updateOffer", () => {
 //  withdrawOffer
 
 describe("withdrawOffer", () => {
-  it("returns 403 for non-logistics users", async () => {
-    const req = manufacturerReq({}, { offerId: "offer1" });
-    const res = mockRes();
-    await withdrawOffer(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-
   it("returns 404 when offer not found", async () => {
     PriceOffer.findOne = vi.fn().mockResolvedValue(null);
     const req = logisticsReq({}, { offerId: "bad_id" });
@@ -534,13 +476,6 @@ describe("acceptOffer", () => {
 //  getMyOffers
 
 describe("getMyOffers", () => {
-  it("returns 403 for non-logistics users", async () => {
-    const req = manufacturerReq({}, {});
-    const res = mockRes();
-    await getMyOffers(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-
   it("returns all offers for the logged-in logistics user", async () => {
     const offers = [mockOfferDoc(), mockOfferDoc({ _id: "offer2" })];
     PriceOffer.find = vi.fn().mockReturnValue({

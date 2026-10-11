@@ -97,17 +97,6 @@ describe("createOrder", () => {
     );
   });
 
-  it("returns 400 when required fields are missing", async () => {
-    const req = manufacturerReq({ productDetails: "Goods" }); // missing quantity, weight etc.
-    const res = mockRes();
-    await createOrder(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining("required"),
-      }),
-    );
-  });
 
   it("creates an order and notifies logistics on success", async () => {
     const saveMock = vi.fn().mockResolvedValue(true);

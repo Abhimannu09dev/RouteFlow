@@ -10,28 +10,8 @@ import {
 //  Submit a price offer (logistics only)
 const submitOffer = async (req, res) => {
   try {
-    if (req.user.role !== "logistics") {
-      return res.status(403).json({
-        success: false,
-        message: "Only logistics companies can submit price offers",
-      });
-    }
-
     const { orderId } = req.params;
     const { proposedPrice, estimatedDeliveryDays, note } = req.body;
-
-    if (!proposedPrice || proposedPrice <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "A valid proposed price is required",
-      });
-    }
-    if (!estimatedDeliveryDays || estimatedDeliveryDays <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Estimated delivery days is required",
-      });
-    }
 
     const order = await Order.findOne({
       orderId,
@@ -160,13 +140,6 @@ const getOffers = async (req, res) => {
 //  Update own offer (logistics only)
 const updateOffer = async (req, res) => {
   try {
-    if (req.user.role !== "logistics") {
-      return res.status(403).json({
-        success: false,
-        message: "Only logistics companies can update offers",
-      });
-    }
-
     const { offerId } = req.params;
     const { proposedPrice, estimatedDeliveryDays, note } = req.body;
 
@@ -209,13 +182,6 @@ const updateOffer = async (req, res) => {
 //  Withdraw own offer (logistics only)
 const withdrawOffer = async (req, res) => {
   try {
-    if (req.user.role !== "logistics") {
-      return res.status(403).json({
-        success: false,
-        message: "Only logistics companies can withdraw offers",
-      });
-    }
-
     const { offerId } = req.params;
     const offer = await PriceOffer.findOne({
       _id: offerId,
@@ -254,15 +220,6 @@ const acceptOffer = async (req, res) => {
   session.startTransaction();
 
   try {
-    if (req.user.role !== "manufacturer") {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(403).json({
-        success: false,
-        message: "Only manufacturers can accept price offers",
-      });
-    }
-
     const { orderId, offerId } = req.params;
 
     const order = await Order.findOne({
@@ -356,12 +313,6 @@ const acceptOffer = async (req, res) => {
 
 const getMyOffers = async (req, res) => {
   try {
-    if (req.user.role !== "logistics") {
-      return res
-        .status(403)
-        .json({ success: false, message: "Logistics only" });
-    }
-
     const offers = await PriceOffer.find({ logistics: req.user.id })
       .populate({
         path: "order",

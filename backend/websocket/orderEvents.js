@@ -79,17 +79,6 @@ const notifyLogisticsBidRejected = async (
   );
 };
 
-//  Order directly accepted — notify manufacturer
-const notifyManufacturerOrderAccepted = async (order, logisticsCompanyName) => {
-  return createAndSend(
-    order.manufacturer,
-    "order_accepted",
-    "Order Accepted",
-    `${logisticsCompanyName} accepted your order ${order.orderId} at your expected price.`,
-    order.orderId,
-  );
-};
-
 //  Status update — notify manufacturer
 const notifyManufacturerStatusUpdate = async (
   order,
@@ -119,6 +108,5 @@ export {
   notifyManufacturerNewBid,
   notifyLogisticsBidAccepted,
   notifyLogisticsBidRejected,
-  notifyManufacturerOrderAccepted,
   notifyManufacturerStatusUpdate,
 };

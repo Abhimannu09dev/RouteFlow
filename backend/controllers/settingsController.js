@@ -64,30 +64,7 @@ const updateNotificationPreferences = async (req, res) => {
 // Change password — requires current password verification
 const changePassword = async (req, res) => {
   try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      return res
-        .status(400)
-        .json({ success: false, message: "All fields are required" });
-    }
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be at least 6 characters",
-      });
-    }
-    if (newPassword !== confirmPassword) {
-      return res
-        .status(400)
-        .json({ success: false, message: "New passwords do not match" });
-    }
-    if (currentPassword === newPassword) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be different from current password",
-      });
-    }
+    const { currentPassword, newPassword } = req.body;
 
     const user = await User.findById(req.user.id).select("password");
     if (!user) {
@@ -119,13 +96,6 @@ const changePassword = async (req, res) => {
 const deactivateAccount = async (req, res) => {
   try {
     const { password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({
-        success: false,
-        message: "Password is required to deactivate account",
-      });
-    }
 
     const user = await User.findById(req.user.id).select("password");
     if (!user) {

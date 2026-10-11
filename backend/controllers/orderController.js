@@ -4,25 +4,12 @@ import Order from "../models/orderModel.js";
 import PriceOffer from "../models/priceOfferModel.js";
 import {
   notifyLogisticsNewOrder,
-  notifyManufacturerOrderAccepted,
   notifyManufacturerStatusUpdate,
 } from "../websocket/orderEvents.js";
 
+import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
+
 const VALID_STATUSES = ["accepted", "in transit", "delivered", "cancelled"];
-
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-const buildPaginationMeta = (total, page, limit) => ({
-  total,
-  page,
-  limit,
-  totalPages: Math.ceil(total / limit),
-});
 
 // Create a new order (manufacturer only)
 const createOrder = async (req, res) => {
@@ -46,21 +33,6 @@ const createOrder = async (req, res) => {
       additionalInfo,
       expectedPrice,
     } = req.body;
-
-    if (
-      !productDetails ||
-      !quantity ||
-      !weight ||
-      !vehicleType ||
-      !routeFrom ||
-      !routeTo
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "productDetails, quantity, weight, vehicleType, routeFrom and routeTo are required",
-      });
-    }
 
     const order = new Order({
       orderId: "ORD-" + crypto.randomBytes(9).toString("hex").toUpperCase(),

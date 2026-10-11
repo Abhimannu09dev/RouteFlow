@@ -1,4 +1,4 @@
-import OrderDetail from "@/components/manufaturer/order-management/order-detail";
+import OrderDetail from "@/components/manufacturer/order-management/order-detail";
 
 type Props = {
   params: Promise<{ orderId: string }>;

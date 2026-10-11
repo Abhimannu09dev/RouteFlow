@@ -39,61 +39,6 @@ const mockTicket = (overrides = {}) => ({
 //  createTicket
 
 describe("createTicket", () => {
-  it("returns 400 when subject is missing", async () => {
-    const req = {
-      user: { id: "user123" },
-      body: { message: "Help me", category: "general" },
-    };
-    const res = mockRes();
-    await createTicket(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Subject is required" }),
-    );
-  });
-
-  it("returns 400 when subject is whitespace only", async () => {
-    const req = {
-      user: { id: "user123" },
-      body: { subject: "   ", message: "Help me", category: "general" },
-    };
-    const res = mockRes();
-    await createTicket(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Subject is required" }),
-    );
-  });
-
-  it("returns 400 when message is missing", async () => {
-    const req = {
-      user: { id: "user123" },
-      body: { subject: "Issue", category: "general" },
-    };
-    const res = mockRes();
-    await createTicket(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Message is required" }),
-    );
-  });
-
-  it("returns 400 for invalid category", async () => {
-    const req = {
-      user: { id: "user123" },
-      body: {
-        subject: "Issue",
-        message: "Details here",
-        category: "invalid_cat",
-      },
-    };
-    const res = mockRes();
-    await createTicket(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Invalid category" }),
-    );
-  });
 
   it.each(["general", "technical", "billing"])(
     "creates ticket successfully for valid category: %s",

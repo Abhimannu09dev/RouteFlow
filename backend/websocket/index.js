@@ -26,7 +26,7 @@ function initWebSocket(server) {
   });
 
   // Auth middleware — verify JWT from cookie
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const cookieHeader = socket.handshake.headers.cookie || "";
       const tokenFromCookie = cookieHeader
@@ -157,9 +157,11 @@ function initWebSocket(server) {
             ? order.logistics?.toString()
             : order.manufacturer?.toString();
         if (otherId) {
-          const otherSocketId = userSocketMap[otherId];
-          if (otherSocketId) {
-            io.to(otherSocketId).emit("messages_read", { orderId });
+          const otherSockets = userSocketMap[otherId];
+          if (otherSockets?.size > 0) {
+            [...otherSockets].forEach((sid) =>
+              io.to(sid).emit("messages_read", { orderId }),
+            );
           }
         }
       } catch (err) {

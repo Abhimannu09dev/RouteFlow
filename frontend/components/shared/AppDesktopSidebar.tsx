@@ -3,12 +3,24 @@ import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
-import { primarySidebarItems, secondarySidebarItems } from "./nav-menu";
 import { authAPI } from "@/lib/api";
 import "@/lib/i18n";
 import Image from "next/image";
 
-export default function DesktopSidebar({ pathname }: { pathname: string }) {
+type NavItem = {
+  labelKey: string;
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+};
+
+type Props = {
+  pathname: string;
+  primaryItems: NavItem[];
+  secondaryItems: NavItem[];
+};
+
+export default function AppDesktopSidebar({ pathname, primaryItems, secondaryItems }: Props) {
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -19,7 +31,6 @@ export default function DesktopSidebar({ pathname }: { pathname: string }) {
 
   return (
     <aside className="hidden lg:flex w-full h-full overflow-y-auto bg-[#F6F8F9] py-4 px-4 flex-col border-r border-[#E5E9EB]">
-      {/* Logo */}
       <div className="flex items-center gap-2 mb-6 px-2">
         <Image
           src="/Logo.png"
@@ -31,9 +42,8 @@ export default function DesktopSidebar({ pathname }: { pathname: string }) {
         <span className="font-semibold text-[#252C32] text-sm">RouteFlow</span>
       </div>
 
-      {/* Primary nav */}
       <nav className="flex flex-col gap-1 flex-1">
-        {primarySidebarItems.map((item) => {
+        {primaryItems.map((item) => {
           const isActive = pathname.includes(item.href);
           return (
             <Link
@@ -52,9 +62,8 @@ export default function DesktopSidebar({ pathname }: { pathname: string }) {
         })}
       </nav>
 
-      {/* Secondary nav */}
       <div className="flex flex-col gap-1 mt-4 border-t border-[#E5E9EB] pt-4">
-        {secondarySidebarItems.map((item) => {
+        {secondaryItems.map((item) => {
           const isActive = pathname.includes(item.href);
           return (
             <Link

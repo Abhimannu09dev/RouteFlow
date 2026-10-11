@@ -242,7 +242,7 @@ describe("loginUser", () => {
     await loginUser(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Email not found" }),
+      expect.objectContaining({ error: "Invalid email or password" }),
     );
   });
 
@@ -265,7 +265,7 @@ describe("loginUser", () => {
     await loginUser(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ error: "Mismatched password" }),
+      expect.objectContaining({ error: "Invalid email or password" }),
     );
   });
 
