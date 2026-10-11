@@ -10,7 +10,7 @@ import {
 import validate from "../middleware/validate.js";
 import { initiatePaymentSchema } from "../validators/paymentValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/status/:orderId", getPaymentStatus);
 router.post("/khalti/initiate", validate(initiatePaymentSchema), initiateKhalti);

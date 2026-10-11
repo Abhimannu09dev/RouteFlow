@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getNotifications, markAsRead, markAllAsRead } from "../controllers/notificationController.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/", getNotifications);
 router.put("/:notificationId/read", markAsRead);

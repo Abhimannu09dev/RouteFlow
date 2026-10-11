@@ -5,7 +5,7 @@ import { getAllTickets, updateTicket } from "../controllers/adminSupportControll
 import validate from "../middleware/validate.js";
 import { rejectUserSchema, updateTicketSchema } from "../validators/adminValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/stats", rolecheck(["admin"]), getAdminStats);
 router.get("/users", rolecheck(["admin"]), getAllUsers);

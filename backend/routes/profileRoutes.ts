@@ -10,7 +10,7 @@ import { uploadProfileFiles } from "../middleware/upload.js";
 import validate from "../middleware/validate.js";
 import { updateProfileSchema } from "../validators/profileValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/", getProfile);
 router.put("/", uploadProfileFiles, validate(updateProfileSchema), updateProfile);

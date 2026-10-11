@@ -4,7 +4,7 @@ import { rolecheck, requireVerification } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 import { submitOfferSchema, updateOfferSchema } from "../validators/priceOfferValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/:orderId/offers", getOffers);
 router.put("/:orderId/offers/:offerId/accept", rolecheck(["manufacturer"]), requireVerification, acceptOffer);

@@ -12,7 +12,7 @@ import { rolecheck, requireVerification } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 import { createOrderSchema, updateOrderStatusSchema } from "../validators/orderValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.post("/create/order", requireVerification, validate(createOrderSchema), createOrder);
 router.get("/orders", getAvailableOrders);

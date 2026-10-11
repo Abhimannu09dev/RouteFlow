@@ -101,4 +101,12 @@ initWebSocket(server);
 
 server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+
+  // Keep Render free-tier awake: ping own health endpoint every 5 min
+  if (process.env["NODE_ENV"] === "production") {
+    const selfUrl = process.env["SELF_URL"] ?? `http://localhost:${PORT}`;
+    setInterval(() => {
+      fetch(`${selfUrl}/`).catch(() => {});
+    }, 5 * 60 * 1000);
+  }
 });

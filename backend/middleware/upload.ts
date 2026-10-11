@@ -1,6 +1,7 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import type { RequestHandler } from "express";
 import type { MimeExtension } from "../types/index.js";
 
 const uploadDir = path.resolve("uploads");
@@ -43,7 +44,7 @@ const fileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
 
 export const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-export const uploadProfileFiles = upload.fields([
+export const uploadProfileFiles: RequestHandler = upload.fields([
   { name: "companyLogo", maxCount: 1 },
   { name: "documents", maxCount: 5 },
 ]);
