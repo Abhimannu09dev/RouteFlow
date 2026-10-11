@@ -79,7 +79,7 @@ export default function NotificationPanel({ role }: Props) {
   //  Socket.io — listen for real-time notifications
 
   useEffect(() => {
-    const socket = io(API_BASE, {
+    const socket = io(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000", {
       withCredentials: true, // sends HTTP-Only cookie
     });
 
