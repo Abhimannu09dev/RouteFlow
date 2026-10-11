@@ -44,5 +44,8 @@ const priceOfferSchema = new Schema({
 });
 
 priceOfferSchema.index({ order: 1, logistics: 1 }, { unique: true });
+// my-offers, stats, and payment initiation all filter by logistics alone
+priceOfferSchema.index({ logistics: 1 });
+priceOfferSchema.index({ status: 1 });
 
 export default mongoose.model("PriceOffer", priceOfferSchema);

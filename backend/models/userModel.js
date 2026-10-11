@@ -53,4 +53,12 @@ const userSchema = new Schema({
   },
 });
 
+// Compound index for logistics fan-out on every new order (orderEvents.js)
+userSchema.index({ role: 1, isActive: 1 });
+// Admin stats/filter queries
+userSchema.index({ role: 1 });
+userSchema.index({ isAccountVerified: 1, submittedForVerification: 1 });
+// Password reset lookup
+userSchema.index({ resetTokenHash: 1, resetTokenExpires: 1 }, { sparse: true });
+
 export default mongoose.model("User", userSchema);

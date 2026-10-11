@@ -44,5 +44,7 @@ const paymentSchema = new Schema(
 
 paymentSchema.index({ orderId: 1 });
 paymentSchema.index({ payerId: 1 });
+// getMyPayments uses $or:[{payerId},{receiverId}] — receiverId needs its own index
+paymentSchema.index({ receiverId: 1 });
 
 export default mongoose.model("Payment", paymentSchema);

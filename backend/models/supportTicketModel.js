@@ -41,5 +41,8 @@ const supportTicketSchema = new Schema(
 );
 
 supportTicketSchema.index({ userId: 1, createdAt: -1 });
+// Admin ticket list filters by status and category independently
+supportTicketSchema.index({ status: 1 });
+supportTicketSchema.index({ category: 1 });
 
 export default mongoose.model("SupportTicket", supportTicketSchema);
