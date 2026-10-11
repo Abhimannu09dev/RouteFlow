@@ -23,11 +23,9 @@ const VALID_DOCUMENT_TYPES = [
 const deleteFile = (filename) => {
   if (!filename) return;
   const filepath = path.join(__dirname, "../uploads", filename);
-  if (fs.existsSync(filepath)) {
-    fs.unlink(filepath, (err) => {
-      if (err) console.error("Failed to delete file:", err.message);
-    });
-  }
+  fs.unlink(filepath, (err) => {
+    if (err && err.code !== "ENOENT") console.error("Failed to delete file:", err.message);
+  });
 };
 
 // Get the logged-in user's full profile

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, CheckCheck, Package, Gavel, Truck, X } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { toast } from "react-toastify";
+import { apiFetch } from "@/lib/api";
 
 type Notification = {
   _id: string;
@@ -15,17 +16,6 @@ type Notification = {
   isRead: boolean;
   createdAt: string;
 };
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-async function apiFetch(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
-  return res.json();
-}
 
 //  Notification icon by type
 
@@ -110,13 +100,13 @@ export default function NotificationPanel({ role }: Props) {
     });
 
     socket.on("connect_error", (err) => {
-      console.error("Notification socket connection error:", err.message);
+      if (process.env.NODE_ENV !== "production")
+        console.error("Notification socket connection error:", err.message);
     });
 
     socket.on("disconnect", (reason) => {
-      if (reason !== "io client disconnect") {
+      if (reason !== "io client disconnect" && process.env.NODE_ENV !== "production")
         console.warn("Notification socket disconnected:", reason);
-      }
     });
 
     return () => {

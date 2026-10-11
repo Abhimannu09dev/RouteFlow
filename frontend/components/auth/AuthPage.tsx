@@ -136,7 +136,13 @@ const AuthForm = ({ action }: { action: string | null }) => {
         }
         const response = await authAPI.login(formData.email, formData.password);
         toast.success("Login successful!");
-        setTimeout(() => router.push(`/${response.user.role}/dashboard`), 1500);
+        const dashboardPath =
+          response.user.role === "manufacturer"
+            ? "/manufacturer/dashboard"
+            : response.user.role === "logistics"
+            ? "/logistics/dashboard"
+            : "/admin/dashboard";
+        setTimeout(() => router.push(dashboardPath), 1500);
       } else if (authType === "sign-up") {
         if (
           !formData.companyName?.trim() ||

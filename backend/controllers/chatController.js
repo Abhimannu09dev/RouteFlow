@@ -253,9 +253,7 @@ const sendMessage = async (req, res) => {
     if (req.file) {
       fileUrl = `/uploads/${userId}/${req.file.filename}`;
       fileName = req.file.originalname;
-      const imageExts = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      fileType = imageExts.includes(ext) ? "image" : "document";
+      fileType = req.file.mimetype.startsWith("image/") ? "image" : "document";
     }
 
     if (!content?.trim() && !fileUrl) {

@@ -224,13 +224,9 @@ const verifyKhalti = async (req, res) => {
 
 // Initiate an eSewa payment for a delivered order
 const initiateEsewa = async (req, res) => {
-  const ESEWA_SECRET_KEY = process.env.ESEWA_SECRET_KEY.replace(/^"|"$/g, "");
-  const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
-    /^"|"$/g,
-    "",
-  );
-
   try {
+    const ESEWA_SECRET_KEY = (process.env.ESEWA_SECRET_KEY || "").replace(/^"|"$/g, "");
+    const ESEWA_MERCHANT_CODE = (process.env.ESEWA_MERCHANT_CODE || "").replace(/^"|"$/g, "");
     const { orderId } = req.body;
 
     const existingPending = await Payment.findOne({ orderId, status: "pending" });
@@ -300,12 +296,8 @@ const initiateEsewa = async (req, res) => {
 
 // Verify eSewa payment status after redirect
 const verifyEsewa = async (req, res) => {
-  const ESEWA_MERCHANT_CODE = process.env.ESEWA_MERCHANT_CODE.replace(
-    /^"|"$/g,
-    "",
-  ); // read lazily
-
   try {
+    const ESEWA_MERCHANT_CODE = (process.env.ESEWA_MERCHANT_CODE || "").replace(/^"|"$/g, "");
     const { data, paymentId } = req.query;
 
     if (!data || !paymentId) {
@@ -334,9 +326,12 @@ const verifyEsewa = async (req, res) => {
     const verifyRes = await fetch(verifyUrl, { method: "GET" });
     const verifyData = await verifyRes.json();
 
+    const amountMatches =
+      Math.abs(parseFloat(verifyData.total_amount) - payment.amount) < 0.01;
     const isCompleted =
       verifyData.status === "COMPLETE" &&
-      verifyData.transaction_uuid === decoded.transaction_uuid;
+      verifyData.transaction_uuid === decoded.transaction_uuid &&
+      amountMatches;
 
     payment.status = isCompleted ? "completed" : "failed";
     payment.refId = decoded.transaction_code || null;

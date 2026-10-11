@@ -2,6 +2,7 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/messageModel.js";
 import Order from "../models/orderModel.js";
+import User from "../models/userModel.js";
 
 let io = null;
 
@@ -37,6 +38,8 @@ function initWebSocket(server) {
         return next(new Error("Authentication required"));
       }
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.id).select("isActive");
+      if (!user?.isActive) return next(new Error("Account is deactivated"));
       socket.userId = decoded.id;
       socket.userRole = decoded.role;
       next();

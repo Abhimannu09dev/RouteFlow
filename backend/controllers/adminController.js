@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
 
@@ -59,9 +60,7 @@ const getAdminStats = async (req, res) => {
       },
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -89,9 +88,10 @@ const getAllUsers = async (req, res) => {
     }
 
     if (search) {
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { companyName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { companyName: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
       ];
     }
 
@@ -110,9 +110,7 @@ const getAllUsers = async (req, res) => {
       pagination: buildPaginationMeta(total, page, limit),
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -120,6 +118,10 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
 
     const user = await User.findById(userId).select(HIDDEN_FIELDS);
     if (!user || user.role === "admin") {
@@ -147,9 +149,7 @@ const getUserById = async (req, res) => {
       orderStats: { totalOrders, activeOrders },
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -157,6 +157,15 @@ const getUserById = async (req, res) => {
 const approveUser = async (req, res) => {
   try {
     const { userId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
+    const existing = await User.findById(userId).select("role companyName");
+    if (!existing || existing.role === "admin") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -168,21 +177,13 @@ const approveUser = async (req, res) => {
       { new: true },
     ).select(HIDDEN_FIELDS);
 
-    if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
     return res.status(200).json({
       success: true,
       message: `${user.companyName} has been approved`,
       user,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -192,10 +193,19 @@ const rejectUser = async (req, res) => {
     const { userId } = req.params;
     const { reason } = req.body;
 
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
+    }
+
     if (!reason?.trim()) {
       return res
         .status(400)
         .json({ success: false, message: "Rejection reason is required" });
+    }
+
+    const existing = await User.findById(userId).select("role companyName");
+    if (!existing || existing.role === "admin") {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -208,21 +218,13 @@ const rejectUser = async (req, res) => {
       { new: true },
     ).select(HIDDEN_FIELDS);
 
-    if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
     return res.status(200).json({
       success: true,
       message: `${user.companyName} has been rejected`,
       user,
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

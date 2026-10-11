@@ -105,7 +105,7 @@ const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(401).json({ error: "Email not found" });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
     if (!user.isVerified) {
       return res.status(403).json({ error: "Account not verified" });
@@ -113,7 +113,7 @@ const loginUser = async (req, res) => {
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ error: "Mismatched password" });
+      return res.status(401).json({ error: "Invalid email or password" });
     }
 
     if (!user.isActive) {
