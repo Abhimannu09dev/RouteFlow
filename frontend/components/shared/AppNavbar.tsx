@@ -1,0 +1,111 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { User, Sun, Moon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import NotificationPanel from "@/components/shared/notification-panel";
+import ChatBadge from "@/components/shared/chat-badge";
+import { authAPI } from "@/lib/api";
+import "@/lib/i18n";
+import { useTheme } from "@/contexts/ThemeContext";
+
+type NavItem = {
+  labelKey: string;
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+};
+
+type Props = {
+  pathname: string;
+  role: "logistics" | "manufacturer";
+  primaryItems: NavItem[];
+  secondaryItems: NavItem[];
+};
+
+const AppNavbar = ({ pathname, role, primaryItems, secondaryItems }: Props) => {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { theme, toggleTheme } = useTheme();
+  const userRef = useRef<HTMLDivElement>(null);
+  const [showUser, setShowUser] = useState(false);
+
+  const allItems = [...primaryItems, ...secondaryItems];
+  const activeItem = allItems.find((item) => pathname.includes(item.href));
+  const title = activeItem ? t(activeItem.labelKey) : "";
+
+  const profileHref = secondaryItems.find((i) => i.href.includes("profile"))?.href ?? `/${role}/profile`;
+  const settingsHref = secondaryItems.find((i) => i.href.includes("settings"))?.href ?? `/${role}/settings`;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userRef.current && !userRef.current.contains(event.target as Node)) {
+        setShowUser(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleLogout() {
+    await authAPI.logout();
+    router.replace("/auth?action=sign-in");
+  }
+
+  return (
+    <header className="bg-white border-b border-[#E5E9EB] p-3 lg:px-8 sticky top-0 z-10">
+      <div className="flex flex-row justify-between items-center">
+        <p className="text-lg font-medium text-[#252C32]">{title}</p>
+        <div className="flex flex-row items-center gap-3 text-[#5B6871] select-none">
+          <ChatBadge role={role} />
+          <NotificationPanel role={role} />
+          <button
+            onClick={toggleTheme}
+            className="p-1.5 rounded-lg hover:bg-[#F5F5F5] text-[#5B6871] transition"
+            title={
+              theme === "light" ? "Switch to dark mode" : "Switch to light mode"
+            }
+          >
+            {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+          </button>
+          <div className="relative" ref={userRef}>
+            <button
+              onClick={() => setShowUser((prev) => !prev)}
+              className="p-1.5 rounded-lg hover:bg-[#F5F5F5] transition"
+            >
+              <User size={18} color="#5B6871" />
+            </button>
+            {showUser && (
+              <div className="absolute top-10 right-0 w-52 bg-white border border-[#E5E9EB] rounded-2xl shadow-lg p-3 flex flex-col gap-1 text-sm z-50">
+                <Link
+                  href={profileHref}
+                  onClick={() => setShowUser(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
+                >
+                  {t("nav.profile")}
+                </Link>
+                <Link
+                  href={settingsHref}
+                  onClick={() => setShowUser(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F5F5F5] text-[#252C32] transition"
+                >
+                  {t("nav.settings")}
+                </Link>
+                <hr className="border-[#E5E9EB] my-1" />
+                <button
+                  onClick={handleLogout}
+                  className="px-3 py-2 rounded-xl hover:bg-red-50 text-red-500 transition text-left"
+                >
+                  {t("nav.logout")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+
+export default AppNavbar;

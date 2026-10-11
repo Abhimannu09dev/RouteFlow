@@ -1,4 +1,4 @@
-import History from "@/components/manufaturer/history/history";
+import History from "@/components/manufacturer/history/history";
 
 export default function ManufacturerHistory() {
   return <History />;

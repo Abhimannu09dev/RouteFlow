@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-async function apiFetch(path: string, options: RequestInit = {}) {
+export async function apiFetch(path: string, options: RequestInit = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     credentials: "include",

@@ -1,78 +1,33 @@
 import User from "../models/userModel.js";
 import Order from "../models/orderModel.js";
+import { parsePagination, buildPaginationMeta } from "../utils/pagination.js";
 
-const parsePagination = (query) => {
-  const page = Math.max(1, parseInt(query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
-  const skip = (page - 1) * limit;
-  return { page, limit, skip };
-};
-
-const buildPaginationMeta = (total, page, limit) => ({
-  total,
-  page,
-  limit,
-  totalPages: Math.ceil(total / limit),
-});
-
-const HIDDEN_FIELDS =
-  "-password -otpHash -otpExpires -resetTokenHash -resetTokenExpires";
-
-// Get platform-wide stats for admin dashboard
-const getAdminStats = async (req, res) => {
+const getAdminStats = (req, res) => {
   try {
-    const [
-      totalUsers,
-      pendingVerification,
-      verifiedUsers,
-      manufacturers,
-      logistics,
-      totalOrders,
-      pendingOrders,
-      deliveredOrders,
-    ] = await Promise.all([
-      User.countDocuments({ role: { $ne: "admin" } }),
-      User.countDocuments({
-        submittedForVerification: true,
-        isAccountVerified: false,
-        role: { $ne: "admin" },
-      }),
-      User.countDocuments({ isAccountVerified: true }),
-      User.countDocuments({ role: "manufacturer" }),
-      User.countDocuments({ role: "logistics" }),
-      Order.countDocuments(),
-      Order.countDocuments({ status: "pending" }),
-      Order.countDocuments({ status: "delivered" }),
-    ]);
+    const totalUsers = User.count({ roleNe: "admin" });
+    const pendingVerification = User.count({ submittedForVerification: true, isAccountVerified: false, roleNe: "admin" });
+    const verifiedUsers = User.count({ isAccountVerified: true });
+    const manufacturers = User.count({ role: "manufacturer" });
+    const logistics = User.count({ role: "logistics" });
+    const totalOrders = Order.count({});
+    const pendingOrders = Order.count({ status: "pending" });
+    const deliveredOrders = Order.count({ status: "delivered" });
 
     return res.status(200).json({
       success: true,
-      stats: {
-        totalUsers,
-        pendingVerification,
-        verifiedUsers,
-        manufacturers,
-        logistics,
-        totalOrders,
-        pendingOrders,
-        deliveredOrders,
-      },
+      stats: { totalUsers, pendingVerification, verifiedUsers, manufacturers, logistics, totalOrders, pendingOrders, deliveredOrders },
     });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get all users with optional filters and pagination
-// Query params: ?status=pending|verified|rejected&role=manufacturer|logistics&search=text&page=1&limit=10
-const getAllUsers = async (req, res) => {
+const getAllUsers = (req, res) => {
   try {
     const { status, role, search } = req.query;
     const { page, limit, skip } = parsePagination(req.query);
 
-    const filter = { role: { $ne: "admin" } };
+    const filter = { roleNe: "admin" };
 
     if (status === "pending") {
       filter.submittedForVerification = true;
@@ -80,149 +35,88 @@ const getAllUsers = async (req, res) => {
     } else if (status === "verified") {
       filter.isAccountVerified = true;
     } else if (status === "rejected") {
-      filter.rejectionReason = { $exists: true, $ne: null };
-      filter.isAccountVerified = false;
+      filter.hasRejectionReason = true;
     }
 
     if (role === "manufacturer" || role === "logistics") {
+      delete filter.roleNe;
       filter.role = role;
     }
 
-    if (search) {
-      filter.$or = [
-        { companyName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
+    if (search) filter.search = search;
 
-    const [users, total] = await Promise.all([
-      User.find(filter)
-        .select(HIDDEN_FIELDS)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      User.countDocuments(filter),
-    ]);
+    const users = User.findAll(filter, { sort: "created_at DESC", limit, skip });
+    const total = User.count(filter);
 
-    return res.status(200).json({
-      success: true,
-      users,
-      pagination: buildPaginationMeta(total, page, limit),
-    });
+    return res.status(200).json({ success: true, users, pagination: buildPaginationMeta(total, page, limit) });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Get a single user by ID with their order stats
-const getUserById = async (req, res) => {
+const getUserById = (req, res) => {
   try {
     const { userId } = req.params;
-
-    const user = await User.findById(userId).select(HIDDEN_FIELDS);
-    if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const orderFilter =
-      user.role === "manufacturer"
-        ? { manufacturer: userId }
-        : { logistics: userId };
+    const user = User.findById(uid);
+    if (!user || user.role === "admin") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
-    const [totalOrders, activeOrders] = await Promise.all([
-      Order.countDocuments(orderFilter),
-      Order.countDocuments({
-        ...orderFilter,
-        status: { $in: ["accepted", "in transit"] },
-      }),
-    ]);
+    const orderFilter = user.role === "manufacturer" ? { manufacturerId: uid } : { logisticsId: uid };
+    const totalOrders = Order.count(orderFilter);
+    const activeOrders = Order.count({ ...orderFilter, statusIn: ["accepted", "in transit"] });
 
-    return res.status(200).json({
-      success: true,
-      user,
-      orderStats: { totalOrders, activeOrders },
-    });
+    return res.status(200).json({ success: true, user, orderStats: { totalOrders, activeOrders } });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Approve a user's account verification
-const approveUser = async (req, res) => {
+const approveUser = (req, res) => {
   try {
     const { userId } = req.params;
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        isAccountVerified: true,
-        submittedForVerification: false,
-        rejectionReason: undefined,
-      },
-      { new: true },
-    ).select(HIDDEN_FIELDS);
-
-    if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: `${user.companyName} has been approved`,
-      user,
-    });
+    const existing = User.findById(uid);
+    if (!existing || existing.role === "admin") {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const user = User.update(uid, { isAccountVerified: true, submittedForVerification: false, rejectionReason: null });
+
+    return res.status(200).json({ success: true, message: `${user.companyName} has been approved`, user });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
-// Reject a user's verification with a reason
-const rejectUser = async (req, res) => {
+const rejectUser = (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
-
-    if (!reason?.trim()) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Rejection reason is required" });
+    const uid = parseInt(userId, 10);
+    if (!Number.isInteger(uid) || uid < 1) {
+      return res.status(400).json({ success: false, message: "Invalid user ID" });
     }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      {
-        isAccountVerified: false,
-        submittedForVerification: false,
-        rejectionReason: reason.trim(),
-      },
-      { new: true },
-    ).select(HIDDEN_FIELDS);
-
-    if (!user || user.role === "admin") {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
+    const existing = User.findById(uid);
+    if (!existing || existing.role === "admin") {
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: `${user.companyName} has been rejected`,
-      user,
-    });
+    const user = User.update(uid, { isAccountVerified: false, submittedForVerification: false, rejectionReason: reason.trim() });
+
+    return res.status(200).json({ success: true, message: `${user.companyName} has been rejected`, user });
   } catch (error) {
-    return res
-      .status(500)
-      .json({ success: false, message: "Server error", error: error.message });
+    return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 

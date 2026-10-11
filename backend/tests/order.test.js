@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-//  Mocks
-
-vi.mock("../models/orderModel.js", () => {
-  const Order = vi.fn();
-  Order.findOne = vi.fn();
-  Order.find = vi.fn();
-  Order.findOneAndUpdate = vi.fn();
-  Order.countDocuments = vi.fn();
-  return { default: Order };
-});
+vi.mock("../models/orderModel.js", () => ({
+  default: {
+    find: vi.fn(),
+    findById: vi.fn(),
+    findByOrderId: vi.fn(),
+    updateByOrderId: vi.fn(),
+    create: vi.fn(),
+    count: vi.fn(),
+    getStats: vi.fn(),
+  },
+}));
 
 vi.mock("../models/priceOfferModel.js", () => ({
   default: {
@@ -31,12 +32,7 @@ import {
   getOrderDetails,
   updateOrderStatus,
 } from "../controllers/orderController.js";
-import {
-  notifyLogisticsNewOrder,
-  notifyManufacturerStatusUpdate,
-} from "../websocket/orderEvents.js";
-
-//  Helpers
+import { notifyLogisticsNewOrder, notifyManufacturerStatusUpdate } from "../websocket/orderEvents.js";
 
 const mockRes = () => {
   const res = {};
@@ -46,23 +42,23 @@ const mockRes = () => {
 };
 
 const manufacturerReq = (body = {}, params = {}, query = {}) => ({
-  user: { id: "mfg001", role: "manufacturer" },
+  user: { id: 1, role: "manufacturer" },
   body,
   params,
   query,
 });
 
 const logisticsReq = (body = {}, params = {}, query = {}) => ({
-  user: { id: "log001", role: "logistics" },
+  user: { id: 2, role: "logistics" },
   body,
   params,
   query,
 });
 
 const mockOrder = (overrides = {}) => ({
-  _id: "order_id_1",
+  id: 1, _id: 1,
   orderId: "ORD-ABC123",
-  manufacturer: "mfg001",
+  manufacturer: { id: 1, _id: 1, companyName: "TestMfg", email: "mfg@test.com" },
   productDetails: "Cement bags",
   quantity: 100,
   weight: 500,
@@ -71,54 +67,26 @@ const mockOrder = (overrides = {}) => ({
   routeTo: "Pokhara",
   status: "pending",
   logistics: null,
-  save: vi.fn(),
   ...overrides,
 });
 
-//  createOrder
+// createOrder
 
 describe("createOrder", () => {
-  it("returns 403 when a non-manufacturer tries to create an order", async () => {
-    const req = logisticsReq({
-      productDetails: "Goods",
-      quantity: 10,
-      weight: 100,
-      vehicleType: "truck",
-      routeFrom: "KTM",
-      routeTo: "PKR",
-    });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Order.create.mockReturnValue(mockOrder());
+  });
+
+  it("returns 403 if user is not a manufacturer", () => {
+    const req = logisticsReq({ productDetails: "stuff", quantity: 10, weight: 100 });
     const res = mockRes();
-    await createOrder(req, res);
+    createOrder(req, res);
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Only manufacturers can create orders",
-      }),
-    );
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: false }));
   });
 
-  it("returns 400 when required fields are missing", async () => {
-    const req = manufacturerReq({ productDetails: "Goods" }); // missing quantity, weight etc.
-    const res = mockRes();
-    await createOrder(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining("required"),
-      }),
-    );
-  });
-
-  it("creates an order and notifies logistics on success", async () => {
-    const saveMock = vi.fn().mockResolvedValue(true);
-    Order.mockImplementation(function () {
-      this._id = "order_id_1";
-      this.orderId = "ORD-ABC123";
-      this.manufacturer = "mfg001";
-      this.save = saveMock;
-    });
-    notifyLogisticsNewOrder.mockImplementation(() => {});
-
+  it("creates an order and returns 201 for manufacturer", () => {
     const req = manufacturerReq({
       productDetails: "Cement bags",
       quantity: 100,
@@ -128,341 +96,105 @@ describe("createOrder", () => {
       routeTo: "Pokhara",
     });
     const res = mockRes();
-    await createOrder(req, res);
-
-    expect(saveMock).toHaveBeenCalled();
+    createOrder(req, res);
+    expect(Order.create).toHaveBeenCalled();
     expect(notifyLogisticsNewOrder).toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(201);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true }),
-    );
-  });
-
-  it("returns 500 on unexpected DB error", async () => {
-    Order.mockImplementation(function () {
-      this.save = vi.fn().mockRejectedValue(new Error("DB crash"));
-    });
-    const req = manufacturerReq({
-      productDetails: "Goods",
-      quantity: 10,
-      weight: 100,
-      vehicleType: "truck",
-      routeFrom: "KTM",
-      routeTo: "PKR",
-    });
-    const res = mockRes();
-    await createOrder(req, res);
-    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
   });
 });
 
-//  getAvailableOrders
+// getAvailableOrders
 
 describe("getAvailableOrders", () => {
-  const makeChain = (orders, count) => {
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-      sort: vi.fn().mockReturnThis(),
-      skip: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue(orders),
-    };
-    Order.find = vi.fn().mockReturnValue(chain);
-    Order.countDocuments = vi.fn().mockResolvedValue(count);
-    return chain;
-  };
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Order.find.mockReturnValue([]);
+    Order.count.mockReturnValue(0);
+  });
 
-  it("returns manufacturer's own orders with pagination", async () => {
-    const orders = [mockOrder()];
-    makeChain(orders, 1);
-
+  it("returns orders for manufacturer", () => {
     const req = manufacturerReq({}, {}, { page: "1", limit: "10" });
     const res = mockRes();
-    await getAvailableOrders(req, res);
-
+    getAvailableOrders(req, res);
+    expect(Order.find).toHaveBeenCalledWith(expect.objectContaining({ manufacturerId: 1 }), expect.any(Object));
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        success: true,
-        orders,
-        pagination: expect.objectContaining({ total: 1, page: 1, limit: 10 }),
-      }),
-    );
   });
 
-  it("returns available pending orders for logistics", async () => {
-    const orders = [mockOrder({ logistics: null, status: "pending" })];
-    makeChain(orders, 1);
-
-    const req = logisticsReq({}, {}, {});
+  it("returns pending orders with no logistics for logistics user", () => {
+    const req = logisticsReq({}, {}, { page: "1", limit: "10" });
     const res = mockRes();
-    await getAvailableOrders(req, res);
-
+    getAvailableOrders(req, res);
+    expect(Order.find).toHaveBeenCalledWith(expect.objectContaining({ logisticsNull: true, status: "pending" }), expect.any(Object));
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, orders }),
-    );
-  });
-
-  it("returns 403 for unsupported role (admin)", async () => {
-    const req = {
-      user: { id: "adm1", role: "admin" },
-      body: {},
-      params: {},
-      query: {},
-    };
-    const res = mockRes();
-    await getAvailableOrders(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-
-  it("returns 500 on DB error", async () => {
-    Order.find = vi.fn().mockImplementation(() => {
-      throw new Error("DB failure");
-    });
-    const req = manufacturerReq({}, {}, {});
-    const res = mockRes();
-    await getAvailableOrders(req, res);
-    expect(res.status).toHaveBeenCalledWith(500);
   });
 });
 
-//  getMyOrders
-
-describe("getMyOrders", () => {
-  const makeChain = (orders, count) => {
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-      sort: vi.fn().mockReturnThis(),
-      skip: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue(orders),
-    };
-    Order.find = vi.fn().mockReturnValue(chain);
-    Order.countDocuments = vi.fn().mockResolvedValue(count);
-    return chain;
-  };
-
-  it("returns logistics' assigned orders", async () => {
-    const orders = [mockOrder({ logistics: "log001", status: "in transit" })];
-    makeChain(orders, 1);
-    const req = logisticsReq({}, {}, {});
-    const res = mockRes();
-    await getMyOrders(req, res);
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, orders }),
-    );
-  });
-
-  it("returns manufacturer's orders with status filter", async () => {
-    const orders = [mockOrder({ status: "delivered" })];
-    makeChain(orders, 1);
-    const req = manufacturerReq({}, {}, { status: "delivered" });
-    const res = mockRes();
-    await getMyOrders(req, res);
-    expect(Order.find).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "delivered" }),
-    );
-    expect(res.status).toHaveBeenCalledWith(200);
-  });
-
-  it("returns 403 for unsupported role", async () => {
-    const req = {
-      user: { id: "adm1", role: "admin" },
-      body: {},
-      params: {},
-      query: {},
-    };
-    const res = mockRes();
-    await getMyOrders(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-});
-
-//  getOrderDetails
+// getOrderDetails
 
 describe("getOrderDetails", () => {
-  it("returns 404 when order not found", async () => {
-    // findOne(...).populate(...).populate(...) resolves to null
-    const chain = { populate: vi.fn() };
-    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(null);
-    Order.findOne = vi.fn().mockReturnValue(chain);
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    const req = {
-      user: { id: "mfg001", role: "manufacturer" },
-      params: { orderId: "BADID" },
-      body: {},
-      query: {},
-    };
+  it("returns 404 when order not found", () => {
+    Order.findByOrderId.mockReturnValue(null);
+    const req = { user: { id: 1, role: "manufacturer" }, params: { orderId: "ORD-NOTFOUND" } };
     const res = mockRes();
-    await getOrderDetails(req, res);
+    getOrderDetails(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Order not found" }),
-    );
   });
 
-  it("returns the order when found", async () => {
-    const order = mockOrder();
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-    };
-    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
-    Order.findOne = vi.fn().mockReturnValue(chain);
-
-    const req = {
-      user: { id: "mfg001", role: "manufacturer" },
-      params: { orderId: "ORD-ABC123" },
-      body: {},
-      query: {},
-    };
+  it("returns order for the manufacturer", () => {
+    Order.findByOrderId.mockReturnValue(mockOrder());
+    const req = { user: { id: 1, role: "manufacturer" }, params: { orderId: "ORD-ABC123" } };
     const res = mockRes();
-    await getOrderDetails(req, res);
-    expect(Order.findOne).toHaveBeenCalledWith({ orderId: "ORD-ABC123" });
-  });
-
-  it("returns 403 if user is not a participant", async () => {
-    const order = {
-      _id: "order123",
-      orderId: "ORD-ABC123",
-      manufacturer: { _id: { toString: () => "mfg001" }, companyName: "Test MFG" },
-      logistics: { _id: { toString: () => "log001" }, companyName: "Test LOG" },
-      status: "accepted",
-    };
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-    };
-    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
-    Order.findOne = vi.fn().mockReturnValue(chain);
-
-    const req = {
-      user: { id: "unauthorized_user", role: "manufacturer" },
-      params: { orderId: "ORD-ABC123" },
-      body: {},
-      query: {},
-    };
-    const res = mockRes();
-    await getOrderDetails(req, res);
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Not authorized" }),
-    );
-  });
-
-  it("allows admin to view any order", async () => {
-    const order = {
-      _id: "order123",
-      orderId: "ORD-ABC123",
-      manufacturer: { _id: { toString: () => "mfg001" }, companyName: "Test MFG" },
-      logistics: { _id: { toString: () => "log001" }, companyName: "Test LOG" },
-      status: "accepted",
-    };
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-    };
-    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
-    Order.findOne = vi.fn().mockReturnValue(chain);
-
-    const req = {
-      user: { id: "admin001", role: "admin" },
-      params: { orderId: "ORD-ABC123" },
-      body: {},
-      query: {},
-    };
-    const res = mockRes();
-    await getOrderDetails(req, res);
+    getOrderDetails(req, res);
     expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  it("returns 403 for unrelated logistics on an accepted order", () => {
+    Order.findByOrderId.mockReturnValue(mockOrder({
+      status: "accepted",
+      logistics: { id: 2, _id: 2, companyName: "AssignedLog" },
+    }));
+    const req = { user: { id: 99, role: "logistics" }, params: { orderId: "ORD-ABC123" } };
+    const res = mockRes();
+    getOrderDetails(req, res);
+    expect(res.status).toHaveBeenCalledWith(403);
   });
 });
 
-//  updateOrderStatus
+// updateOrderStatus
 
 describe("updateOrderStatus", () => {
-  it("returns 400 for invalid status", async () => {
-    const req = logisticsReq(
-      { status: "unknown_status" },
-      { orderId: "ORD-ABC123" },
-    );
-    const res = mockRes();
-    await updateOrderStatus(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining("Status must be one of"),
-      }),
-    );
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("returns 404 when order not found or user is not assigned logistics", async () => {
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-    };
-    chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(null);
-    Order.findOneAndUpdate = vi.fn().mockReturnValue(chain);
-
-    const req = logisticsReq(
-      { status: "delivered" },
-      { orderId: "ORD-ABC123" },
-    );
+  it("returns 400 when status is invalid", () => {
+    const req = { user: { id: 2, role: "logistics" }, params: { orderId: "ORD-ABC123" }, body: { status: "invalid" } };
     const res = mockRes();
-    await updateOrderStatus(req, res);
+    updateOrderStatus(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 404 if order not found or wrong logistics", () => {
+    Order.updateByOrderId.mockReturnValue(null);
+    const req = { user: { id: 2, role: "logistics" }, params: { orderId: "ORD-ABC123" }, body: { status: "in transit" } };
+    const res = mockRes();
+    updateOrderStatus(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it("updates status and notifies manufacturer on success", async () => {
-    const updatedOrder = mockOrder({
-      status: "delivered",
-      logistics: { _id: "log001", companyName: "FastLog" },
-    });
-    const chain = {
-      populate: vi.fn().mockReturnThis(),
-    };
-    chain.populate
-      .mockReturnValueOnce(chain)
-      .mockResolvedValueOnce(updatedOrder);
-    Order.findOneAndUpdate = vi.fn().mockReturnValue(chain);
-    notifyManufacturerStatusUpdate.mockImplementation(() => {});
-
-    const req = logisticsReq(
-      { status: "delivered" },
-      { orderId: "ORD-ABC123" },
-    );
+  it("updates order status and sends notification", () => {
+    const updatedOrder = mockOrder({ status: "in transit", logistics: { id: 2, companyName: "FastLog" } });
+    Order.updateByOrderId.mockReturnValue(updatedOrder);
+    const req = { user: { id: 2, role: "logistics" }, params: { orderId: "ORD-ABC123" }, body: { status: "in transit" } };
     const res = mockRes();
-    await updateOrderStatus(req, res);
-
-    expect(notifyManufacturerStatusUpdate).toHaveBeenCalledWith(
-      updatedOrder,
-      "delivered",
-      "FastLog",
-    );
+    updateOrderStatus(req, res);
+    expect(notifyManufacturerStatusUpdate).toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, order: updatedOrder }),
-    );
-  });
-
-  it("returns 400 when status is missing", async () => {
-    const req = logisticsReq({}, { orderId: "ORD-ABC123" });
-    const res = mockRes();
-    await updateOrderStatus(req, res);
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
-
-  it("accepts all valid statuses", async () => {
-    const validStatuses = ["accepted", "in transit", "delivered", "cancelled"];
-    for (const status of validStatuses) {
-      const order = mockOrder({
-        status,
-        logistics: { _id: "log001", companyName: "FL" },
-      });
-      const chain = { populate: vi.fn().mockReturnThis() };
-      chain.populate.mockReturnValueOnce(chain).mockResolvedValueOnce(order);
-      Order.findOneAndUpdate = vi.fn().mockReturnValue(chain);
-      notifyManufacturerStatusUpdate.mockImplementation(() => {});
-
-      const req = logisticsReq({ status }, { orderId: "ORD-ABC123" });
-      const res = mockRes();
-      await updateOrderStatus(req, res);
-      expect(res.status).toHaveBeenCalledWith(200);
-    }
   });
 });

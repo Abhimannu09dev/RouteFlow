@@ -10,23 +10,14 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 interface ChatPageProps {
   role: "manufacturer" | "logistics";
+  currentUserId: string | null;
 }
 
-export default function ChatPage({ role }: ChatPageProps) {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+export default function ChatPage({ role, currentUserId }: ChatPageProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileView, setMobileView] = useState<"list" | "chat">("list");
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/auth/me`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((u) => {
-        if (u?.id) setCurrentUserId(u.id);
-      })
-      .catch(() => {});
-  }, []);
 
   const fetchConversations = useCallback(async () => {
     try {

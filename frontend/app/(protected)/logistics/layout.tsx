@@ -1,7 +1,11 @@
 "use client";
-import Navbar from "@/components/logistics/common/Navbar";
-import DesktopSidebar from "@/components/logistics/common/DesktopSidebar";
-import MobileSidebar from "@/components/logistics/common/MobileSidebar";
+import AppNavbar from "@/components/shared/AppNavbar";
+import AppDesktopSidebar from "@/components/shared/AppDesktopSidebar";
+import AppMobileSidebar from "@/components/shared/AppMobileSidebar";
+import {
+  primarySidebarItems,
+  secondarySidebarItems,
+} from "@/components/logistics/common/nav-menu";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,10 +38,10 @@ export default function LogisticsLayout({
 
   return (
     <div className="w-full grid grid-cols-1 lg:grid-cols-5 xl:grid-cols-6 h-[100dvh] overflow-hidden">
-      <DesktopSidebar pathname={pathname} />
-      <MobileSidebar pathname={pathname} />
+      <AppDesktopSidebar pathname={pathname} primaryItems={primarySidebarItems} secondaryItems={secondarySidebarItems} />
+      <AppMobileSidebar pathname={pathname} primaryItems={primarySidebarItems} secondaryItems={secondarySidebarItems} />
       <div className="lg:col-span-4 xl:col-span-5 w-full h-[100dvh] overflow-hidden flex flex-col">
-        <Navbar pathname={pathname} />
+        <AppNavbar pathname={pathname} role="logistics" primaryItems={primarySidebarItems} secondaryItems={secondarySidebarItems} />
         {/*
           KEY FIX: flex-1 + min-h-0 makes this div take exactly the remaining
           height after the navbar, allowing children to use h-full correctly.

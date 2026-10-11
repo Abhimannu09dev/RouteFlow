@@ -35,7 +35,8 @@ export default function EsewaVerifyContent() {
           setStatus("failed");
         }
       } catch (error) {
-        console.error("eSewa verification failed:", error);
+        if (process.env.NODE_ENV !== "production")
+          console.error("eSewa verification failed:", error);
         setStatus("failed");
       }
     };

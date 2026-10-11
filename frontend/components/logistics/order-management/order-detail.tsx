@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { orderAPI, priceOfferAPI } from "@/lib/api";
@@ -103,7 +103,7 @@ export default function LogisticsOrderDetail({ orderId }: { orderId: string }) {
   const [showBidModal, setShowBidModal] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     try {
       const [orderRes, offersRes] = await Promise.all([
         orderAPI.getOrderDetails(orderId),
@@ -117,11 +117,11 @@ export default function LogisticsOrderDetail({ orderId }: { orderId: string }) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [orderId]);
 
   useEffect(() => {
     fetchData();
-  }, [orderId]);
+  }, [fetchData]);
 
   async function handleWithdraw() {
     if (!myOffer || !order) return;
