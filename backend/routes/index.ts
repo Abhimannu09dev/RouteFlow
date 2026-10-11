@@ -11,7 +11,7 @@ import supportRoutes from "./supportRoutes.js";
 import paymentRoutes from "./paymentRoutes.js";
 import { auth } from "../middleware/auth.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.use("/auth", authRouter);
 router.use(auth);

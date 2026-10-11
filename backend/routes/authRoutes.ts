@@ -18,7 +18,7 @@ import {
   resetPasswordSchema,
 } from "../validators/authValidators.js";
 
-const authRouter = Router();
+const authRouter: ReturnType<typeof Router> = Router();
 
 authRouter.post("/register", validate(registerSchema), createUser);
 authRouter.post("/login", strictLimiter, validate(loginSchema), loginUser);

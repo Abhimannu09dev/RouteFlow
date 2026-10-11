@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getConversations, getMessages, sendMessage, getUnreadCount } from "../controllers/chatController.js";
 import { upload } from "../middleware/upload.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/conversations", getConversations);
 router.get("/unread-count", getUnreadCount);

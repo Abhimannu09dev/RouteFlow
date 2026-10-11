@@ -12,7 +12,7 @@ import {
   deactivateAccountSchema,
 } from "../validators/settingsValidators.js";
 
-const router = Router();
+const router: ReturnType<typeof Router> = Router();
 
 router.get("/notifications", getNotificationPreferences);
 router.put("/notifications", validate(notificationPreferencesSchema), updateNotificationPreferences);

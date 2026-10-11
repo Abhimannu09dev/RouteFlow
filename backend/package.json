@@ -43,6 +43,7 @@
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.5",
     "@types/nodemailer": "^8.0.2",
+    "@types/qs": "^6.15.1",
     "@typescript-eslint/eslint-plugin": "^8.71.1",
     "@typescript-eslint/parser": "^8.71.1",
     "@vitest/coverage-v8": "^4.1.4",
@@ -53,10 +54,5 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^4.1.4"
-  },
-  "allowScripts": {
-    "better-sqlite3@9.6.0": true,
-    "bcrypt@6.0.0": true,
-    "esbuild@0.28.2": true
   }
 }
