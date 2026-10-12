@@ -39,6 +39,8 @@ import {
   loginUser,
   verifyOtp,
   forgotPassword,
+  resendOtp,
+  resetPassword,
 } from "../controllers/userController.js";
 
 const mockRes = () => {
@@ -245,5 +247,110 @@ describe("forgotPassword", () => {
     await forgotPassword(req, res);
     expect(vi.mocked(res.status)).toHaveBeenCalledWith(200);
     expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("If an account exists") }));
+  });
+
+  it("returns 400 when email is invalid", async () => {
+    const req = { body: { email: "not-an-email" } } as Request;
+    const res = mockRes();
+    await forgotPassword(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+  });
+});
+
+describe("resendOtp", () => {
+  beforeEach(() => {
+    sendOtpEmailMock.mockResolvedValue(true);
+  });
+
+  it("returns 400 when email is missing", async () => {
+    const req = { body: {} } as Request;
+    const res = mockRes();
+    await resendOtp(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "Email is required" }));
+  });
+
+  it("returns 404 when user not found", async () => {
+    UserMock.findByEmail.mockReturnValue(null);
+    const req = { body: { email: "a@b.com" } } as Request;
+    const res = mockRes();
+    await resendOtp(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(404);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "User not found" }));
+  });
+
+  it("returns 200 when user is already verified", async () => {
+    UserMock.findByEmail.mockReturnValue(mockUser({ isVerified: true }) as never);
+    const req = { body: { email: "a@b.com" } } as Request;
+    const res = mockRes();
+    await resendOtp(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(200);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ message: "Email already verified" }));
+  });
+
+  it("resends OTP for unverified user and returns 200", async () => {
+    UserMock.findByEmail.mockReturnValue(mockUser({ isVerified: false }) as never);
+    const req = { body: { email: "a@b.com" } } as Request;
+    const res = mockRes();
+    await resendOtp(req, res);
+    expect(UserMock.update).toHaveBeenCalled();
+    expect(sendOtpEmailMock).toHaveBeenCalledWith("a@b.com", expect.any(String));
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(200);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ success: true, message: "OTP resent to email" }));
+  });
+
+  it("returns 500 when email sending fails", async () => {
+    UserMock.findByEmail.mockReturnValue(mockUser({ isVerified: false }) as never);
+    sendOtpEmailMock.mockRejectedValue(new Error("SMTP error"));
+    const req = { body: { email: "a@b.com" } } as Request;
+    const res = mockRes();
+    await resendOtp(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(500);
+  });
+});
+
+describe("resetPassword", () => {
+  it("returns 400 when token, password, or confirmPassword is missing", async () => {
+    const req = { body: { token: "tok", password: "Pass123!" } } as Request;
+    const res = mockRes();
+    await resetPassword(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "Token, password, and confirm password are required" }));
+  });
+
+  it("returns 400 when passwords do not match", async () => {
+    const req = { body: { token: "tok", password: "Pass123!", confirmPassword: "Diff123!" } } as Request;
+    const res = mockRes();
+    await resetPassword(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "Passwords do not match" }));
+  });
+
+  it("returns 400 when password is too short", async () => {
+    const req = { body: { token: "tok", password: "abc", confirmPassword: "abc" } } as Request;
+    const res = mockRes();
+    await resetPassword(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "Password must be at least 6 characters" }));
+  });
+
+  it("returns 400 when reset token is invalid or expired", async () => {
+    UserMock.findByResetToken.mockReturnValue(null);
+    const req = { body: { token: "badtoken", password: "NewPass1!", confirmPassword: "NewPass1!" } } as Request;
+    const res = mockRes();
+    await resetPassword(req, res);
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(400);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ error: "Invalid or expired reset token" }));
+  });
+
+  it("resets password successfully and returns 200", async () => {
+    UserMock.findByResetToken.mockReturnValue(mockUser() as never);
+    UserMock.update.mockReturnValue(mockUser() as never);
+    const req = { body: { token: "validtoken", password: "NewPass1!", confirmPassword: "NewPass1!" } } as Request;
+    const res = mockRes();
+    await resetPassword(req, res);
+    expect(UserMock.update).toHaveBeenCalledWith(1, expect.objectContaining({ resetTokenHash: null, resetTokenExpires: null }));
+    expect(vi.mocked(res.status)).toHaveBeenCalledWith(200);
+    expect(vi.mocked(res.json)).toHaveBeenCalledWith(expect.objectContaining({ success: true, message: "Password reset successfully" }));
   });
 });
